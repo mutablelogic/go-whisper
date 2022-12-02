@@ -5,7 +5,7 @@ package whisper
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../third_party/whisper.cpp
-#cgo LDFLAGS: -L${SRCDIR}/../../build -lwhisper -lm -lstdc++
+#cgo LDFLAGS: -L${SRCDIR}/../../build -lwhisper -lm -lstdc++ -framework Accelerate
 #include <whisper.h>
 #include <stdlib.h>
 */

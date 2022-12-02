@@ -69,7 +69,6 @@ mkdir:
 clean:
 	@echo Clean
 	@rm -fr $(BUILD_DIR)
-	@${GIT} submodule deinit -f --all
 	@${GO} mod tidy
 	@${GO} clean
 
