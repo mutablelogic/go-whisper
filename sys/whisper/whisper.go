@@ -6,6 +6,7 @@ package whisper
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../third_party/whisper.cpp
 #cgo LDFLAGS: -L${SRCDIR}/../../build -lwhisper -lm -lstdc++ -framework Accelerate
+#cgo darwin LDFLAGS: -framework Accelerate
 #include <whisper.h>
 #include <stdlib.h>
 */
