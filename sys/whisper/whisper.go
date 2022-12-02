@@ -16,7 +16,6 @@ import "unsafe"
 	// The probabilities for the next token
     WHISPER_API float * whisper_get_probs(struct whisper_context * ctx);
 
-
     // Text segment callback
     // Called on every newly generated text segment
     // Use the whisper_full_...() functions to obtain the text segments
@@ -26,7 +25,6 @@ import "unsafe"
     // If not NULL, called before the encoder starts
     // If it returns false, the computation is aborted
     typedef bool (*whisper_encoder_begin_callback)(struct whisper_context * ctx, void * user_data);
-
 */
 
 ///////////////////////////////////////////////////////////////////////////////
