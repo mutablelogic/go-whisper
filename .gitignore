@@ -12,3 +12,7 @@
 vendor/
 build/
 models/
+
+# Other
+.vscode
+
