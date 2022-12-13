@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	// Packages
 	whisper "github.com/djthorpe/go-whisper/pkg/whisper"
@@ -94,7 +95,13 @@ func main() {
 
 		// Process the samples
 		model.SetProcessors(FlagProc(flagset))
-		if err := model.Process(samples); err != nil {
+		if err := model.Process(samples, func(num int, t0, t1 time.Duration, tokens []whisper.Token) {
+			fmt.Printf("n=%02d t0=%v t1=%v ", num, t0, t1)
+			for _, token := range tokens {
+				fmt.Printf("%v ", token.Text())
+			}
+			fmt.Println("")
+		}); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			continue
 		}
