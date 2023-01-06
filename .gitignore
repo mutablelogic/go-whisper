@@ -9,15 +9,9 @@
 *.sum
 
 # Dependency directories (remove the comment below to include it)
-<<<<<<< HEAD
 vendor
 build
 models
-=======
-vendor/
-build/
-models/
->>>>>>> 03e06c3edefcf0c4c74cb4ba7e8263e97d81fcd8
 
 # Other
 .vscode
