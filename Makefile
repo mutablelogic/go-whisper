@@ -10,6 +10,8 @@ BUILD_FLAGS = -ldflags "-s -w"
 BUILD_DIR := build
 MODEL_DIR := models
 CMD_DIR := $(wildcard cmd/*)
+INCLUDE_PATH := $(abspath third_party/whisper.cpp)
+LIBRARY_PATH := $(abspath third_party/whisper.cpp)
 
 # Targets
 all: clean whisper cmd
@@ -31,11 +33,11 @@ models: model-downloader
 	@echo Downloading models
 	@${BUILD_DIR}/go-model-download -out ${MODEL_DIR}
 
-cmd: $(wildcard cmd/*)
+cmd: whisper $(wildcard cmd/*)
 
-$(CMD_DIR): dependencies mkdir whisper
+$(CMD_DIR): dependencies mkdir
 	@echo Build cmd $(notdir $@)
-	@${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/$(notdir $@) ./$@
+	@C_INCLUDE_PATH=${INCLUDE_PATH} LIBRARY_PATH=${LIBRARY_PATH} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/$(notdir $@) ./$@
 
 FORCE:
 
