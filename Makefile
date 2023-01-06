@@ -1,15 +1,14 @@
 # Paths to tools needed in dependencies
 GO := $(shell which go)
 GIT := $(shell which git)
-CMAKE := $(shell which cmake)
 
 # Build flags
 BUILD_MODULE := $(shell go list -m)
 BUILD_FLAGS = -ldflags "-s -w" 
 
 # Paths to locations, etc
-BUILD_DIR := "build"
-MODEL_DIR := "models"
+BUILD_DIR := build
+MODEL_DIR := models
 CMD_DIR := $(wildcard cmd/*)
 
 # Targets
@@ -17,49 +16,32 @@ all: clean whisper cmd
 
 submodule:
 	@echo Update submodules
-	@${GIT} submodule update --init --recursive
+	@${GIT} submodule update --init --recursive --remote --force
 
 whisper: submodule
 	@echo Build whisper
-	@${CMAKE} -S third_party/whisper.cpp -B ${BUILD_DIR} -D BUILD_SHARED_LIBS=off
-	@${CMAKE} --build ${BUILD_DIR} --target whisper
+	@make -C third_party/whisper.cpp libwhisper.a
 
-models: model-tiny model-small model-medium model-large
+model-downloader: submodule mkdir
+	@echo Build model-downloader
+	@make -C third_party/whisper.cpp/bindings/go examples/go-model-download
+	@install third_party/whisper.cpp/bindings/go/build/go-model-download ${BUILD_DIR}
 
-model-tiny: mkdir whisper
-	@echo Download model-tiny
-	@third_party/whisper.cpp/models/download-ggml-model.sh tiny
-	@install third_party/whisper.cpp/models/ggml-tiny.bin ${MODEL_DIR}/ggml-tiny.bin
+models: model-downloader
+	@echo Downloading models
+	@${BUILD_DIR}/go-model-download -out ${MODEL_DIR}
 
-model-small: mkdir whisper
-	@echo Download model-small
-	@third_party/whisper.cpp/models/download-ggml-model.sh small
-	@install third_party/whisper.cpp/models/ggml-small.bin ${MODEL_DIR}/ggml-small.bin
+cmd: $(wildcard cmd/*)
 
-model-medium: mkdir whisper
-	@echo Download model-medium
-	@third_party/whisper.cpp/models/download-ggml-model.sh medium
-	@install third_party/whisper.cpp/models/ggml-medium.bin ${MODEL_DIR}/ggml-medium.bin
-
-model-large: mkdir whisper
-	@echo Download model-large
-	@third_party/whisper.cpp/models/download-ggml-model.sh large
-	@install third_party/whisper.cpp/models/ggml-large.bin ${MODEL_DIR}/ggml-large.bin
-
-cmd: $(filter-out cmd/README.md, $(wildcard cmd/*))
-
-test: whisper
-	@${GO} mod tidy
-	@${GO} test -v ./sys/...
-
-$(CMD_DIR): dependencies mkdir
+$(CMD_DIR): dependencies mkdir whisper
 	@echo Build cmd $(notdir $@)
 	@${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/$(notdir $@) ./$@
 
 FORCE:
 
 dependencies:
-	@test -x ${GO} || (echo "Missing go binary" && exit 1)
+	@test -f "${GO}" && test -x "${GO}"  || (echo "Missing go binary" && exit 1)
+	@test -f "${GIT}" && test -x "${GIT}"  || (echo "Missing git binary" && exit 1)
 
 mkdir:
 	@echo Mkdir ${BUILD_DIR} ${MODEL_DIR}
@@ -69,6 +51,7 @@ mkdir:
 clean:
 	@echo Clean
 	@rm -fr $(BUILD_DIR)
+	@${GIT} submodule deinit --all -f
 	@${GO} mod tidy
 	@${GO} clean
 

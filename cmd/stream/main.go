@@ -10,7 +10,6 @@ import (
 	"time"
 
 	// Packages
-	"github.com/djthorpe/go-whisper/pkg/whisper"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -52,12 +51,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Missing model argument, use --help for usage")
 		os.Exit(1)
 	}
-	model, err := whisper.New(flagset.Arg(0))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer model.Close()
 
 	// Open device
 	device, err := OpenCaptureDevice(device_num)
@@ -67,20 +60,13 @@ func main() {
 	}
 	defer sdl.CloseAudioDevice(device)
 
-	// Set buffer, parameters
-	buf := NewBuffer(FlagLength(flagset))
-	model.SetProcessors(FlagProc(flagset))
-	model.SetTranslate(false)
-	model.SetSingleSegment(true)
-	model.SetPrintProgress(false)
-	model.SetPrintRealtime(false)
-	model.SetPrintTimestamps(false)
-	model.SetPrintSpecial(false)
-
 	// Repeat until cancelled
 	ctx := ContextWithCancel([]os.Signal{os.Interrupt})
 	fmt.Println("[speak now]")
 	sdl.PauseAudioDevice(device, false)
+
+	// Make a buffer
+	buf := NewBuffer(30 * time.Second)
 
 FOR_LOOP:
 	for {
@@ -90,17 +76,6 @@ FOR_LOOP:
 		default:
 			// Read and process audio
 			if err := sdl.DequeueAudio(device, buf.Bytes()); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				continue
-			}
-
-			if err := model.Process(buf.Samples(), func(num int, t0, t1 time.Duration, tokens []whisper.Token) {
-				fmt.Printf("n=%02d t0=%v t1=%v ", num, t0, t1)
-				for _, token := range tokens {
-					fmt.Printf("%v ", token.Text())
-				}
-				fmt.Println("")
-			}); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				continue
 			}
@@ -129,16 +104,11 @@ FOR_LOOP:
 			*/
 		}
 	}
-
-	// Set parameters from step and length
-	//	const int n_samples_len = (params.length_ms / 1000.0) * WHISPER_SAMPLE_RATE
-	//	const int n_samples_30s = 30 * WHISPER_SAMPLE_RATE
-	//	const int n_samples_keep = 0.2 * WHISPER_SAMPLE_RATE
 }
 
 func OpenCaptureDevice(num int) (sdl.AudioDeviceID, error) {
 	var requested, obtained sdl.AudioSpec
-	requested.Freq = whisper.SAMPLE_RATE
+	requested.Freq = 16000 // whisper.SAMPLE_RATE
 	requested.Format = sdl.AUDIO_F32
 	requested.Channels = 1
 	requested.Samples = 1024
