@@ -1,6 +1,9 @@
 package main
 
-import "flag"
+import (
+	"flag"
+	"time"
+)
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -19,6 +22,8 @@ func NewFlags(name string, args []string) (*Flags, error) {
 
 	// Register flags
 	this.Int("device", 0, "Audio device to use")
+	this.String("model", "models/ggml-base.bin", "Whisper model path")
+	this.Duration("window", 0, "Window size for processing")
 
 	// Parse flags
 	if err := this.Parse(args); err != nil {
@@ -44,4 +49,12 @@ func (this *Flags) HasDevice() bool {
 
 func (this *Flags) GetDevice() int {
 	return this.Lookup("device").Value.(flag.Getter).Get().(int)
+}
+
+func (this *Flags) GetModel() string {
+	return this.Lookup("model").Value.String()
+}
+
+func (this *Flags) GetWindow() time.Duration {
+	return this.Lookup("window").Value.(flag.Getter).Get().(time.Duration)
 }

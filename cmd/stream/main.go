@@ -39,14 +39,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Check for file argument
-	if flags.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "Missing file argument")
-		os.Exit(1)
-	}
-
 	// Create sample processor
-	process, err := NewProcess(flags.Arg(0))
+	process, err := NewProcess(flags.GetModel(), flags.GetWindow())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -54,7 +48,7 @@ func main() {
 	defer process.Close()
 
 	// Open capture device
-	context, err := streamer.Open(flags.GetDevice(), whisper.SampleRate, 1, 2048)
+	context, err := streamer.Open(flags.GetDevice(), whisper.SampleRate, 1, 1024)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -63,10 +57,11 @@ func main() {
 
 	// Repeat until cancelled
 	ctx := ContextWithCancel([]os.Signal{os.Interrupt})
-	fmt.Println("[speak now]")
 	context.Start()
 
+	fmt.Println("[speak now, press CTRL+C to stop]")
 	t := process.T()
+
 FOR_LOOP:
 	for {
 		select {
@@ -79,7 +74,7 @@ FOR_LOOP:
 				process.C() <- samples
 			}
 			if t2 := process.T(); t2.Truncate(time.Second) != t.Truncate(time.Second) {
-				fmt.Println("T=", t2)
+				// TODO: Output some status information
 				t = t2
 			}
 			time.Sleep(100 * time.Millisecond)
