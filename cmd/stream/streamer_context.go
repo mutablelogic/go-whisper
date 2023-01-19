@@ -72,7 +72,7 @@ func (streamer *StreamerContext) Samples() ([]float32, error) {
 	}
 
 	// Return the samples
-	if err := sdl.DequeueAudio(streamer.Dev, streamer.u8); err != nil {
+	if _, err := sdl.DequeueAudio(streamer.Dev, streamer.u8); err != nil {
 		return nil, err
 	} else {
 		return streamer.f32[:], nil
