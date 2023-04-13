@@ -1,7 +1,6 @@
 package main
 
 import (
-	"reflect"
 	"unsafe"
 
 	sdl "github.com/veandco/go-sdl2/sdl"
@@ -14,23 +13,19 @@ type StreamerContext struct {
 	Dev  sdl.AudioDeviceID
 	Spec sdl.AudioSpec
 	u8   []byte
-	f32  []float32
+	f32  *float32
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
 func NewStreamerContext(dev sdl.AudioDeviceID, spec sdl.AudioSpec) (*StreamerContext, error) {
-	streamer := new(StreamerContext)
-	streamer.Dev = dev
-	streamer.Spec = spec
-	streamer.u8 = make([]byte, spec.Size)
-
-	// f32 is a fake slice
-	header := (*reflect.SliceHeader)(unsafe.Pointer(&streamer.f32))
-	header.Data = uintptr(unsafe.Pointer(&streamer.u8[0]))
-	header.Len = int(spec.Size >> 2)
-	header.Cap = int(spec.Size >> 2)
+	streamer := &StreamerContext{
+		Dev:  dev,
+		Spec: spec,
+		u8:   make([]byte, spec.Size),
+		f32:  (*float32)(unsafe.Pointer(&spec.Silence)),
+	}
 
 	// Return success
 	return streamer, nil
@@ -40,6 +35,7 @@ func (streamer *StreamerContext) Close() error {
 	sdl.CloseAudioDevice(streamer.Dev)
 	streamer.Dev = 0
 	streamer.u8 = nil
+	streamer.f32 = nil
 	return nil
 }
 
@@ -70,12 +66,14 @@ func (streamer *StreamerContext) Samples() ([]float32, error) {
 		return nil, nil
 	}
 
-	// Return the samples
+	// Dequeue the audio
 	if _, err := sdl.DequeueAudio(streamer.Dev, streamer.u8); err != nil {
 		return nil, err
-	} else {
-		return streamer.f32[:], nil
 	}
+
+	// Calculate the number of samples and return a slice with that length
+	numSamples := n >> 2
+	return (*[1<<31 - 1]float32)(unsafe.Pointer(&streamer.u8[0]))[:numSamples], nil
 }
 
 // Clear any queued audio
