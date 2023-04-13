@@ -14,7 +14,7 @@ INCLUDE_PATH := $(abspath third_party/whisper.cpp)
 LIBRARY_PATH := $(abspath third_party/whisper.cpp)
 
 # Targets
-all: clean whisper cmd go-whisper
+all: clean whisper cmd go-whisper model-downloader
 
 submodule:
 	@echo Update submodules
@@ -30,7 +30,7 @@ model-downloader: submodule mkdir
 	@install third_party/whisper.cpp/bindings/go/build/go-model-download ${BUILD_DIR}
 
 go-whisper: submodule mkdir
-	@echo Build model-downloader
+	@echo Build go-whisper
 	@make -C third_party/whisper.cpp/bindings/go examples/go-whisper
 	@install third_party/whisper.cpp/bindings/go/build/go-whisper ${BUILD_DIR}
 
