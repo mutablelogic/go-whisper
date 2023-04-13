@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	whisper "github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
@@ -17,10 +18,11 @@ type Process struct {
 	wg     sync.WaitGroup
 	cancel context.CancelFunc
 	ch     chan []float32
-	t      time.Duration
+	t      int64
 	model  whisper.Model
 	buf    []float32
 	n      int
+	pool   *sync.Pool
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -34,17 +36,23 @@ const (
 // LIFECYCLE
 
 func NewProcess(model string, window time.Duration) (*Process, error) {
-	process := new(Process)
-	process.ch = make(chan []float32)
+	// Create process
+	var num = int(whisper.SampleRate * defaultWindow / time.Second)
+	process := &Process{
+		ch: make(chan []float32),
+		pool: &sync.Pool{
+			New: func() interface{} {
+				return make([]float32, 0, num)
+			},
+		},
+		n:   num,
+		buf: make([]float32, 0, num),
+	}
 
 	// Set default window
 	if window == 0 {
 		window = defaultWindow
 	}
-
-	// Create a buffer for the samples. The idea is to make a circular buffer eventually
-	process.n = int(whisper.SampleRate * defaultWindow / time.Second)
-	process.buf = make([]float32, 0, process.n)
 
 	// Load the model
 	if model, err := whisper.New(model); err != nil {
@@ -55,8 +63,8 @@ func NewProcess(model string, window time.Duration) (*Process, error) {
 
 	// Create background goroutine
 	ctx, cancel := context.WithCancel(context.Background())
-	process.wg.Add(1)
 	process.cancel = cancel
+	process.wg.Add(1)
 	go func() {
 		defer process.wg.Done()
 		process.process(ctx)
@@ -72,11 +80,6 @@ func (process *Process) Close() error {
 	// Cancel context and wait for end of context
 	process.cancel()
 	process.wg.Wait()
-
-	// Close channel, release buffer
-	close(process.ch)
-	process.ch = nil
-	process.buf = nil
 
 	// Close model
 	if err := process.model.Close(); err != nil {
@@ -97,7 +100,7 @@ func (process *Process) C() chan<- []float32 {
 
 // Return the timestamp of the queued samples
 func (process *Process) T() time.Duration {
-	return process.t
+	return time.Duration(atomic.LoadInt64(&process.t)) * time.Second / whisper.SampleRate
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,23 +116,27 @@ func (process *Process) process(ctx context.Context) error {
 			if len(samples) > 0 {
 				process.buf = append(process.buf, samples...)
 				if len(process.buf) >= process.n {
-					samples := make([]float32, len(process.buf))
-					copy(samples, process.buf)
+					samples := process.pool.Get().([]float32)
+					samples = append(samples[:0], process.buf...)
+					process.pool.Put(process.buf[:0])
 					go func() {
-						if err := process.do(ctx, process.t, samples); err != nil {
+						if err := process.do(ctx, atomic.LoadInt64(&process.t), samples); err != nil {
 							fmt.Println(err)
 						}
 					}()
 					process.n = len(process.buf)
 					process.buf = process.buf[:0]
 				}
-				process.t += time.Second * time.Duration(len(samples)) / whisper.SampleRate
+				atomic.AddInt64(&process.t, int64(len(samples)))
 			}
 		}
 	}
 }
 
-func (process *Process) do(ctx context.Context, offset time.Duration, samples []float32) error {
+func (process *Process) do(ctx context.Context, offset int64, samples []float32) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+
 	context, err := process.model.NewContext()
 	if err != nil {
 		return err
@@ -141,13 +148,15 @@ func (process *Process) do(ctx context.Context, offset time.Duration, samples []
 	}
 	// Print out the results
 	for {
-		segment, err := context.NextSegment()
-		if err != nil {
-			break
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			segment, err := context.NextSegment()
+			if err != nil {
+				return nil
+			}
+			fmt.Printf("[%6s->%6s] %s\n", segment.Start+time.Duration(offset)*time.Second, segment.End+time.Duration(offset)*time.Second, segment.Text)
 		}
-		fmt.Printf("[%6s->%6s] %s\n", segment.Start+offset, segment.End+offset, segment.Text)
 	}
-
-	// Return success
-	return nil
 }
