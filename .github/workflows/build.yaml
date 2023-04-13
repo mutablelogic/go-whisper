@@ -1,5 +1,9 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
 
 jobs:
   ubuntu-latest:
@@ -18,9 +22,10 @@ jobs:
       - name: Build
         run: |
           make all
+          ls build/
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: whisper-linux-bin
           path: build/
@@ -40,9 +45,10 @@ jobs:
       - name: Build
         run: |
           make all
+          ls build/
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: whisper-mac-bin
           path: build/
