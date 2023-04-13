@@ -1,0 +1,48 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  ubuntu-latest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v1
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential
+          sudo apt-get install libsdl2-dev
+
+      - name: Build
+        run: |
+          make all
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v1
+        with:
+          name: whisper-linux-bin
+          path: build/
+
+  macOS-latest:
+    runs-on: macOS-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v1
+
+      - name: Dependencies
+        run: |
+          brew update
+          brew install sdl2
+
+      - name: Build
+        run: |
+          make all
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v1
+        with:
+          name: whisper-mac-bin
+          path: build/
