@@ -1,6 +1,6 @@
-module github.com/djthorpe/go-whisper
+module github.com/hewenyu/go-whisper
 
-go 1.18
+go 1.20
 
 require (
 	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-20230119165033-21c569ba4acc
