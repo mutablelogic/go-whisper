@@ -1,7 +1,6 @@
 package main
 
 import (
-	// Packages
 	sdl "github.com/veandco/go-sdl2/sdl"
 )
 

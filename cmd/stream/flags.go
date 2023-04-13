@@ -17,29 +17,29 @@ type Flags struct {
 
 func NewFlags(name string, args []string) (*Flags, error) {
 	// Create flags
-	this := new(Flags)
-	this.FlagSet = flag.NewFlagSet(name, flag.ContinueOnError)
+	tmpFlags := new(Flags)
+	tmpFlags.FlagSet = flag.NewFlagSet(name, flag.ContinueOnError)
 
 	// Register flags
-	this.Int("device", 0, "Audio device to use")
-	this.String("model", "models/ggml-base.bin", "Whisper model path")
-	this.Duration("window", 0, "Window size for processing")
+	tmpFlags.Int("device", 0, "Audio device to use")
+	tmpFlags.String("model", "models/ggml-base.bin", "Whisper model path")
+	tmpFlags.Duration("window", 0, "Window size for processing")
 
 	// Parse flags
-	if err := this.Parse(args); err != nil {
+	if err := tmpFlags.Parse(args); err != nil {
 		return nil, err
 	}
 
 	// Return success
-	return this, nil
+	return tmpFlags, nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-func (this *Flags) HasDevice() bool {
+func (t *Flags) HasDevice() bool {
 	var found bool
-	this.FlagSet.Visit(func(f *flag.Flag) {
+	t.FlagSet.Visit(func(f *flag.Flag) {
 		if f.Name == "device" {
 			found = true
 		}
@@ -47,14 +47,14 @@ func (this *Flags) HasDevice() bool {
 	return found
 }
 
-func (this *Flags) GetDevice() int {
-	return this.Lookup("device").Value.(flag.Getter).Get().(int)
+func (t *Flags) GetDevice() int {
+	return t.Lookup("device").Value.(flag.Getter).Get().(int)
 }
 
-func (this *Flags) GetModel() string {
-	return this.Lookup("model").Value.String()
+func (t *Flags) GetModel() string {
+	return t.Lookup("model").Value.String()
 }
 
-func (this *Flags) GetWindow() time.Duration {
-	return this.Lookup("window").Value.(flag.Getter).Get().(time.Duration)
+func (t *Flags) GetWindow() time.Duration {
+	return t.Lookup("window").Value.(flag.Getter).Get().(time.Duration)
 }

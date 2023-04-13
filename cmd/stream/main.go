@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	// Packages
 	whisper "github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
 )
 
