@@ -23,6 +23,12 @@ The following `Makefile` targets can be used:
   * `make models` downloads the models to the `models` directory
   * `make cmd` builds the command-line tools, and places them in `build` directory
 
+## Download Model
+
+```bash
+./build/go-model-download -out models ggml-small.en.bin
+```
+
 ## Streaming Translation
 
 There is one example of streaming translation in the `cmd` directory. It presently creates a lot
