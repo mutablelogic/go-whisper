@@ -143,7 +143,7 @@ func (process *Process) do(ctx context.Context, offset int64, samples []float32)
 	}
 
 	// Process samples
-	if err := context.Process(samples, nil); err != nil {
+	if err := context.Process(samples, nil, nil); err != nil {
 		return err
 	}
 	// Print out the results
