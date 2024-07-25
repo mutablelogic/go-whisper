@@ -1,59 +1,51 @@
-# Paths to tools needed in dependencies
-GO := $(shell which go)
-GIT := $(shell which git)
+# Paths to packages
+DOCKER=$(shell which docker)
+GIT=$(shell which git)
 
-# Build flags
-BUILD_MODULE := $(shell go list -m)
-BUILD_FLAGS = -ldflags "-s -w" 
+# Set OS and Architecture
+ARCH ?= $(shell arch | tr A-Z a-z | sed 's/x86_64/amd64/' | sed 's/i386/amd64/' | sed 's/armv7l/arm/' | sed 's/aarch64/arm64/')
+OS ?= $(shell uname | tr A-Z a-z)
+VERSION ?= $(shell git describe --tags --always | sed 's/^v//')
+DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 
-# Paths to locations, etc
-BUILD_DIR := build
-MODEL_DIR := models
-CMD_DIR := $(wildcard cmd/*)
-INCLUDE_PATH := $(abspath third_party/whisper.cpp)
-LIBRARY_PATH := $(abspath third_party/whisper.cpp)
+# Set docker tag
+BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
 
-# Targets
-all: clean whisper cmd
+# Build docker container
+docker: docker-dep submodule
+	@echo build docker image: ${BUILD_TAG} for ${OS}/${ARCH}
+	@${DOCKER} build \
+		--tag ${BUILD_TAG} \
+		--build-arg ARCH=${ARCH} \
+		--build-arg OS=${OS} \
+		--build-arg SOURCE=${BUILD_MODULE} \
+		--build-arg VERSION=${VERSION} \
+		-f etc/Dockerfile.${ARCH} .
 
-submodule:
-	@echo Update submodules
-	@${GIT} submodule update --init --recursive --remote --force
+# Build llama-server
+whisper-server: submodule
+	@echo "Building whisper-server"
+	@cd third_party/whisper.cpp && make -j$(nproc) server
+	
+# Push docker container
+docker-push: docker-dep 
+	@echo push docker image: ${BUILD_TAG}
+	@${DOCKER} push ${BUILD_TAG}
 
-whisper: submodule
-	@echo Build whisper
-	@make -C third_party/whisper.cpp libwhisper.a
+# Update submodule to the latest version
+submodule-update: git-dep
+	@echo "Updating submodules"
+	@${GIT} submodule foreach git pull origin master
 
-model-downloader: submodule mkdir
-	@echo Build model-downloader
-	@make -C third_party/whisper.cpp/bindings/go examples/go-model-download
-	@install third_party/whisper.cpp/bindings/go/build/go-model-download ${BUILD_DIR}
+# Submodule checkout
+submodule: git-dep
+	@echo "Checking out submodules"
+	@${GIT} submodule update --init --recursive --remote
 
-models: model-downloader
-	@echo Downloading models
-	@${BUILD_DIR}/go-model-download -out ${MODEL_DIR}
+# Check for docker
+docker-dep:
+	@test -f "${DOCKER}" && test -x "${DOCKER}"  || (echo "Missing docker binary" && exit 1)
 
-cmd: whisper $(wildcard cmd/*)
-
-$(CMD_DIR): dependencies mkdir
-	@echo Build cmd $(notdir $@)
-	@C_INCLUDE_PATH=${INCLUDE_PATH} LIBRARY_PATH=${LIBRARY_PATH} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/$(notdir $@) ./$@
-
-FORCE:
-
-dependencies:
-	@test -f "${GO}" && test -x "${GO}"  || (echo "Missing go binary" && exit 1)
+# Check for git
+git-dep:
 	@test -f "${GIT}" && test -x "${GIT}"  || (echo "Missing git binary" && exit 1)
-
-mkdir:
-	@echo Mkdir ${BUILD_DIR} ${MODEL_DIR}
-	@install -d ${BUILD_DIR}
-	@install -d ${MODEL_DIR}
-
-clean:
-	@echo Clean
-	@rm -fr $(BUILD_DIR)
-	@${GIT} submodule deinit --all -f
-	@${GO} mod tidy
-	@${GO} clean
-
