@@ -17,8 +17,10 @@ RUN make -j$(nproc) whisper-server
 
 # Setup runtime container
 FROM ${BASE_CUDA_RUN_CONTAINER} AS runtime
-RUN apt-get -y update && apt-get -y upgrade
+ARG CUDA_MAIN_VERSION=12.5
+RUN apt-get -y update && apt-get -y upgrade && apt-get -y install libgomp1
 COPY --from=build /app/third_party/whisper.cpp/server /whisper-server
+ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_MAIN_VERSION}/compat:$LD_LIBRARY_PATH
 
 # Expose
 ENTRYPOINT [ "/whisper-server" ]
