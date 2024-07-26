@@ -159,6 +159,12 @@ func setQueryValue(tag string, v reflect.Value, value []string) error {
 			return fmt.Errorf("%q: %w", tag, err)
 		}
 		v.SetUint(value)
+	case reflect.Float32, reflect.Float64:
+		value, err := strconv.ParseFloat(value[0], 64)
+		if err != nil {
+			return fmt.Errorf("%q: %w", tag, err)
+		}
+		v.SetFloat(value)
 	case reflect.Struct:
 		// TODO: Abstract this to unmarshaler interface with UnmarshalJSON
 		// from a string-quoted value

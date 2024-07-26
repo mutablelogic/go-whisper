@@ -21,7 +21,7 @@ type reqTranscribe struct {
 	Language       *string               `json:"language"`
 	Prompt         *string               `json:"prompt"`
 	ResponseFormat *string               `json:"response_format"`
-	Temperature    *float64              `json:"temperature"`
+	Temperature    *float32              `json:"temperature"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,10 +72,25 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	var result *whisper.Transcription
 	if err := service.WithModelContext(model, func(ctx *whisper.Context) error {
 		var err error
+
+		// Set parameters for transcription
+		if req.Language != nil {
+			if err := ctx.SetLanguage(*req.Language); err != nil {
+				return err
+			}
+		}
+		if req.Prompt != nil {
+			ctx.SetPrompt(*req.Prompt)
+		}
+		if req.Temperature != nil {
+			ctx.SetTemperature(*req.Temperature)
+		}
+
+		// Perform the transcription, return any errors
 		result, err = service.Transcribe(ctx, buf.AsFloat32Buffer().Data)
 		return err
 	}); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

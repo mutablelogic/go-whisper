@@ -225,7 +225,13 @@ func (p *Params) SetAudioCtx(n int) {
 
 // Set initial prompt
 func (p *Params) SetInitialPrompt(prompt string) {
+	// TODO: This results in a memory leak
 	p.initial_prompt = C.CString(prompt)
+}
+
+// Set temperature
+func (p *Params) SetTemperature(t float32) {
+	p.temperature = C.float(t)
 }
 
 ///////////////////////////////////////////////////////////////////////////////

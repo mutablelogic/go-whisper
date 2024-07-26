@@ -1,6 +1,7 @@
 # Paths to packages
 DOCKER=$(shell which docker)
 GIT=$(shell which git)
+GO=$(shell which go)
 
 # Set OS and Architecture
 ARCH ?= $(shell arch | tr A-Z a-z | sed 's/x86_64/amd64/' | sed 's/i386/amd64/' | sed 's/armv7l/arm/' | sed 's/aarch64/arm64/')
@@ -28,18 +29,18 @@ docker: docker-dep submodule
 all: build server
 
 # Make server
-server: mkdir libwhisper libggml
+server: mkdir go-tidy libwhisper libggml
 	@echo "Building whisper-server"
 	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
 	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 go build -o ${BUILD_DIR}/whisper-server ./cmd/server
+	 ${GO} build -o ${BUILD_DIR}/whisper-server ./cmd/server
 
 # Test whisper bindings
-test: libwhisper libggml
+test: go-tidy libwhisper libggml
 	@echo "Running tests"
 	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
 	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 go test -v ./sys/whisper/...
+	 ${GO} test -v ./sys/whisper/...
 
 # Build whisper-static-library
 libwhisper: submodule
@@ -79,7 +80,17 @@ docker-dep:
 git-dep:
 	@test -f "${GIT}" && test -x "${GIT}"  || (echo "Missing git binary" && exit 1)
 
+# Check for go
+go-dep:
+	@test -f "${GO}" && test -x "${GO}"  || (echo "Missing go binary" && exit 1)
+
 # Make build directory
 mkdir:
 	@echo Mkdir ${BUILD_DIR}
 	@install -d ${BUILD_DIR}
+
+# go mod tidy
+go-tidy: go-dep
+	@echo Tidy
+	@${GO} mod tidy
+	@${GO} clean	

@@ -1,6 +1,7 @@
 package whisper
 
 import (
+	"fmt"
 	"path/filepath"
 
 	// Packages
@@ -66,19 +67,26 @@ func (c *Context) Params() *whisper.Params {
 	return c.params
 }
 
-func (c *Context) SetLanguage(v string) {
+func (c *Context) SetLanguage(v string) error {
 	if c.temp == nil {
 		t := *c.params
 		c.temp = &t
 	}
+
+	// Set empty language
 	if v == "" || v == "auto" {
 		c.temp.SetLanguage(-1)
-		return
+		return nil
 	}
+
+	// Get language id
 	lang := c.Whisper_lang_id(v)
-	if lang != -1 {
-		c.temp.SetLanguage(lang)
+	if lang == -1 {
+		return fmt.Errorf("invalid language: %q", v)
 	}
+
+	// Set language
+	return c.temp.SetLanguage(lang)
 }
 
 func (c *Context) SetTranslate(v bool) {
@@ -87,4 +95,20 @@ func (c *Context) SetTranslate(v bool) {
 		c.temp = &t
 	}
 	c.temp.SetTranslate(v)
+}
+
+func (c *Context) SetPrompt(v string) {
+	if c.temp == nil {
+		t := *c.params
+		c.temp = &t
+	}
+	c.temp.SetInitialPrompt(v)
+}
+
+func (c *Context) SetTemperature(v float32) {
+	if c.temp == nil {
+		t := *c.params
+		c.temp = &t
+	}
+	c.temp.SetTemperature(v)
 }
