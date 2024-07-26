@@ -7,7 +7,7 @@ ARG BASE_CUDA_RUN_CONTAINER=nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_V
 # Setup build container
 FROM ${BASE_CUDA_DEV_CONTAINER} AS build
 ARG CUDA_DOCKER_ARCH=all
-RUN apt-get -y update && apt-get -y install build-essential git curl
+RUN apt-get -y update && apt-get -y install build-essential git libgomp1 curl
 
 # Install go
 ARG GO_VERSION=1.22.5
