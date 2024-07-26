@@ -13,6 +13,7 @@ import (
 )
 
 const SAMPLE_JFK = "../../samples/jfk.wav"
+const SAMPLE_OLIVIERL = "../../samples/OlivierL.wav"
 
 func Test_whisper_001(t *testing.T) {
 	assert := assert.New(t)
@@ -114,8 +115,8 @@ func Test_whisper_002(t *testing.T) {
 		}
 	})
 
-	// Call full encode with sample
-	t.Run("FullSample", func(t *testing.T) {
+	// Call full encode with JFK sample
+	t.Run("FullSampleJFK", func(t *testing.T) {
 		ctx := whisper.Whisper_init(tmpfile.Name())
 		assert.NotNil(ctx)
 		defer ctx.Whisper_free()
@@ -151,6 +152,46 @@ func Test_whisper_002(t *testing.T) {
 			t.Logf("Segment %d: %q", i, text)
 			assert.Contains(strings.ToLower(text), "ask not what your country can do for you")
 			assert.Contains(strings.ToLower(text), "ask what you can do for your country")
+		}
+	})
+
+	// Call full encode with SAMPLE_OLIVIERL (fr)
+	t.Run("FullSampleOlivierL", func(t *testing.T) {
+		ctx := whisper.Whisper_init(tmpfile.Name())
+		assert.NotNil(ctx)
+		defer ctx.Whisper_free()
+
+		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
+		assert.NotNil(params)
+		defer params.Close()
+
+		params.SetLanguage(ctx.Whisper_lang_id("fr"))
+
+		// Get samples from WAV file
+		samples, err := LoadSample(SAMPLE_OLIVIERL)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		err = ctx.Whisper_full(params, samples, nil, nil, nil)
+		assert.NoError(err)
+
+		// We should detect "en" in the "ggml-tiny-q5_1.bin" model
+		lang := ctx.Whisper_full_lang_id()
+		lang_str := whisper.Whisper_lang_str(lang)
+		assert.Equal(ctx.Whisper_lang_id("fr"), lang)
+		assert.Equal("fr", lang_str)
+
+		// Get segments - should be one
+		n := ctx.Whisper_full_n_segments()
+		assert.GreaterOrEqual(n, 1)
+
+		// Get tokens from segments
+		for i := 0; i < n; i++ {
+			ntokens := ctx.Whisper_full_n_tokens(i)
+			assert.GreaterOrEqual(ntokens, 1)
+			text := strings.TrimSpace(ctx.Whisper_full_get_segment_text(i))
+			t.Logf("Segment %d: %q", i, text)
 		}
 	})
 }
