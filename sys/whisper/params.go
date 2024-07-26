@@ -22,7 +22,9 @@ import "C"
 
 // Returns new default parameters. Call Close() to free memory associated with the parameters.
 func NewParams(strategy SamplingStrategy) *Params {
-	return (*Params)(C.whisper_full_default_params_by_ref(C.enum_whisper_sampling_strategy(strategy)))
+	params := (*Params)(C.whisper_full_default_params_by_ref(C.enum_whisper_sampling_strategy(strategy)))
+	params.language = nil
+	return params
 }
 
 func (p *Params) Close() {
