@@ -52,28 +52,7 @@ func Test_whisper_002(t *testing.T) {
 	err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
 	assert.NoError(err)
 
-	// Load the model
-	t.Run("LoadModel", func(t *testing.T) {
-		ctx := whisper.Whisper_init(tmpfile.Name())
-		assert.NotNil(ctx)
-		ctx.Whisper_free()
-	})
-
-	// Create parameters
-	t.Run("CreateParams", func(t *testing.T) {
-		ctx := whisper.Whisper_init(tmpfile.Name())
-		assert.NotNil(ctx)
-		defer ctx.Whisper_free()
-
-		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
-		assert.NotNil(params)
-		defer params.Close()
-
-		t.Log(params)
-
-	})
-
-	// Call full encode with silence
+	// Call full encode with callback
 	t.Run("FullSilence", func(t *testing.T) {
 		ctx := whisper.Whisper_init(tmpfile.Name())
 		assert.NotNil(ctx)
@@ -195,6 +174,92 @@ func Test_whisper_002(t *testing.T) {
 		}
 	})
 }
+
+func Test_whisper_003(t *testing.T) {
+	assert := assert.New(t)
+
+	// Set logging
+	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+		t.Log(level, strings.TrimSpace(text))
+	})
+
+	// Create a client for downloading the model
+	client := whisper.NewClient("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true")
+	assert.NotNil(client)
+
+	// Get a model - save to file
+	tmpfile, err := os.Create(filepath.Join(t.TempDir(), "ggml-tiny-q5_1.bin"))
+	if !assert.NoError(err) {
+		t.SkipNow()
+	}
+	defer tmpfile.Close()
+
+	// Get the model
+	t.Log("Downloading model", tmpfile.Name())
+	err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
+	assert.NoError(err)
+
+	// Call full encode with callbacks SAMPLE_OLIVIERL (fr)
+	t.Run("FullCallbackSampleOlivierL", func(t *testing.T) {
+		ctx := whisper.Whisper_init(tmpfile.Name())
+		assert.NotNil(ctx)
+		defer ctx.Whisper_free()
+
+		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
+		assert.NotNil(params)
+		defer params.Close()
+
+		params.SetLanguage(ctx.Whisper_lang_id("fr"))
+
+		// Get samples from WAV file
+		samples, err := LoadSample(SAMPLE_OLIVIERL)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set callbacks
+		var calledBegin, calledSegment, calledProgress bool
+		encodeBegin := func() bool {
+			t.Log("Called encodeBegin")
+			calledBegin = true
+			return true
+		}
+		newSegment := func(s int) {
+			t.Logf("Called newSegment %d", s)
+			calledSegment = true
+		}
+		progress := func(p int) {
+			t.Logf("Called progress %d", p)
+			calledProgress = true
+		}
+
+		err = ctx.Whisper_full(params, samples, encodeBegin, newSegment, progress)
+		assert.NoError(err)
+		assert.True(calledBegin)
+		assert.True(calledSegment)
+		assert.True(calledProgress)
+
+		// We should detect "fr" in the "ggml-tiny-q5_1.bin" model
+		lang := ctx.Whisper_full_lang_id()
+		lang_str := whisper.Whisper_lang_str(lang)
+		assert.Equal(ctx.Whisper_lang_id("fr"), lang)
+		assert.Equal("fr", lang_str)
+
+		// Get segments - should be one
+		n := ctx.Whisper_full_n_segments()
+		assert.GreaterOrEqual(n, 1)
+
+		// Get tokens from segments
+		for i := 0; i < n; i++ {
+			ntokens := ctx.Whisper_full_n_tokens(i)
+			assert.GreaterOrEqual(ntokens, 1)
+			text := strings.TrimSpace(ctx.Whisper_full_get_segment_text(i))
+			t.Logf("Segment %d: %q", i, text)
+		}
+	})
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 // Return samples as []float32
 func LoadSample(path string) ([]float32, error) {
