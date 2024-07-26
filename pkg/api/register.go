@@ -69,7 +69,7 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 
 		switch r.Method {
 		case http.MethodPost:
-			TranscribeFile(r.Context(), whisper, w, r, false)
+			TranscribeFile(r.Context(), whisper, w, r, true)
 		default:
 			httpresponse.Error(w, http.StatusMethodNotAllowed)
 		}
@@ -83,7 +83,7 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 
 		switch r.Method {
 		case http.MethodPost:
-			TranscribeFile(r.Context(), whisper, w, r, true)
+			TranscribeFile(r.Context(), whisper, w, r, false)
 		default:
 			httpresponse.Error(w, http.StatusMethodNotAllowed)
 		}
