@@ -2,13 +2,16 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/mutablelogic/go-whisper/pkg/api"
-	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	// Packages
+	api "github.com/mutablelogic/go-whisper/pkg/api"
+	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
+	sys "github.com/mutablelogic/go-whisper/sys/whisper"
 )
 
 func main() {
@@ -17,15 +20,41 @@ func main() {
 	flags, err := NewFlags(name, os.Args[1:])
 	if err != nil {
 		if err != flag.ErrHelp {
-			fmt.Fprintln(os.Stderr, err)
+			log.Println(err)
 		}
 		os.Exit(-1)
 	}
 
+	// Set logging
+	sys.Whisper_log_set(func(level sys.LogLevel, text string) {
+		if flags.Debug() && level == sys.LogLevelDebug || level == sys.LogLevelInfo || level == sys.LogLevelWarn {
+			return
+		}
+		log.Println(level, strings.TrimSpace(text))
+	})
+
+	// Determine the directory for models
+	dir := flags.Dir()
+	if dir == "" {
+		cacheDir, err := os.UserCacheDir()
+		if err != nil {
+			log.Println(err)
+			os.Exit(-1)
+		}
+		dir = filepath.Join(cacheDir, name)
+	}
+
+	// Create the directory for models
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Println(err)
+		os.Exit(-1)
+	}
+
 	// Create a whisper service
-	whisper, err := whisper.New(flags.Dir())
+	log.Println("Storing models at", dir)
+	whisper, err := whisper.New(dir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Println(err)
 		os.Exit(-2)
 	}
 
@@ -33,9 +62,9 @@ func main() {
 	api.RegisterEndpoints(flags.Endpoint(), http.DefaultServeMux, whisper)
 
 	// Start the server
-	fmt.Println("Listening on", flags.Listen())
+	log.Println("Listening on", flags.Listen())
 	if err := http.ListenAndServe(flags.Listen(), nil); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Println(err)
 		os.Exit(-2)
 	}
 }

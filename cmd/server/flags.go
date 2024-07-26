@@ -12,6 +12,7 @@ type Flags struct {
 	endpoint *string
 	listen   *string
 	dir      *string
+	debug    *bool
 }
 
 func NewFlags(name string, args []string) (*Flags, error) {
@@ -21,6 +22,7 @@ func NewFlags(name string, args []string) (*Flags, error) {
 	flags.endpoint = flags.String("endpoint", "/v1", "HTTP endpoint")
 	flags.listen = flags.String("listen", ":8080", "HTTP Listen address")
 	flags.dir = flags.String("dir", "${WHISPER_DATA}", "Model data directory")
+	flags.debug = flags.Bool("debug", false, "Display debug information")
 
 	// Parse flags and return any error
 	return flags, flags.Parse(args)
@@ -36,4 +38,8 @@ func (f *Flags) Dir() string {
 
 func (f *Flags) Endpoint() string {
 	return *f.endpoint
+}
+
+func (f *Flags) Debug() bool {
+	return *f.debug
 }
