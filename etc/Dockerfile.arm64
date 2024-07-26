@@ -1,27 +1,35 @@
 # Jetson CUDA 
 # https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-cuda/tags
 ARG CUDA_VERSION=12.2.12
-ARG CUDA_MAIN_VERSION=12.2
-ARG CUDA_DOCKER_ARCH=all
 ARG BASE_CUDA_DEV_CONTAINER=nvcr.io/nvidia/l4t-cuda:${CUDA_VERSION}-devel
 ARG BASE_CUDA_RUN_CONTAINER=nvcr.io/nvidia/l4t-cuda:${CUDA_VERSION}-runtime
 
 # Setup build container
 FROM ${BASE_CUDA_DEV_CONTAINER} AS build
-RUN apt-get -y update && apt-get -y install build-essential git
+ARG CUDA_DOCKER_ARCH=all
+RUN apt-get -y update && apt-get -y install build-essential git curl
+
+# Install go
+ARG GO_VERSION=1.22.5
+ARG GO_ARCH=arm64
+RUN curl -sL https://golang.org/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz | tar -C /usr/local -xz
+ENV PATH=$PATH:/usr/local/go/bin
+
+# Copy source
 WORKDIR /app
 COPY . .
 
-# Make llama-server
+# Make whisper-server
 ENV CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH}
 ENV GGML_CUDA=1
 RUN make -j$(nproc) server
 
 # Setup runtime container
 FROM ${BASE_CUDA_RUN_CONTAINER} AS runtime
+ARG CUDA_MAIN_VERSION=12.2
 RUN apt-get -y update && apt-get -y upgrade
-COPY --from=build /app/build/whisper-server /whisper-server
+COPY --from=build /app/build/whisper-server /usr/local/bin/whisper-server
 ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_MAIN_VERSION}/compat:$LD_LIBRARY_PATH
 
 # Expose
-ENTRYPOINT [ "/whisper-server" ]
+ENTRYPOINT [ "/usr/local/bin/whisper-server" ]
