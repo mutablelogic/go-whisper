@@ -10,6 +10,7 @@ DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 
 # Set docker tag
 BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
+ROOT_PATH := $(CURDIR)
 
 # Build docker container
 docker: docker-dep submodule
@@ -22,7 +23,24 @@ docker: docker-dep submodule
 		--build-arg VERSION=${VERSION} \
 		-f etc/Dockerfile.${ARCH} .
 
-# Build llama-server
+# Test whisper bindings
+test: libwhisper libggml
+	@echo "Running tests"
+	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
+	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
+	 go test -v ./sys/whisper/...
+
+# Build whisper-static-library
+libwhisper: submodule
+	@echo "Building libwhisper.a"
+	@cd third_party/whisper.cpp && make -j$(nproc) libwhisper.a
+
+# Build ggml-static-library
+libggml: submodule
+	@echo "Building libggml.a"
+	@cd third_party/whisper.cpp && make -j$(nproc) libggml.a
+
+# Build whisper-server
 whisper-server: submodule
 	@echo "Building whisper-server"
 	@cd third_party/whisper.cpp && make -j$(nproc) server
