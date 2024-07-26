@@ -2,7 +2,7 @@
 # https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-cuda/tags
 ARG CUDA_VERSION=12.2.12
 ARG CUDA_MAIN_VERSION=12.2
-ARG CUDA_DOCKER_ARCH=arm64
+ARG CUDA_DOCKER_ARCH=all
 ARG BASE_CUDA_DEV_CONTAINER=nvcr.io/nvidia/l4t-cuda:${CUDA_VERSION}-devel
 ARG BASE_CUDA_RUN_CONTAINER=nvcr.io/nvidia/l4t-cuda:${CUDA_VERSION}-runtime
 

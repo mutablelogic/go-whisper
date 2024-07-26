@@ -1,0 +1,98 @@
+name: Build docker container on publish
+on:
+  release:
+    types: [ created, edited ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'tag'
+        required: true
+        default: 'latest'
+        type: string
+jobs:
+  var:
+    name: Set variables
+    runs-on: ubuntu-latest
+    outputs:
+      image: "ghcr.io/mutablelogic/go-whisper"
+      tag: ${{ steps.var.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set variables
+        id: var
+        run: |
+          if [ "${{ github.event_name }}" != "release" ] && [ "${{ inputs.tag }}" != "latest" ]; then
+            TAG="${{ inputs.tag }}" && echo "tag=${TAG#v}" >> $GITHUB_OUTPUT
+          else
+            TAG="$(git describe --tags)" && echo "tag=${TAG#v}" >> $GITHUB_OUTPUT
+          fi
+  build:
+    name: Build
+    needs: var
+    strategy:
+      matrix:
+        arch: [ amd64, arm64 ]
+    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-latest' || matrix.arch == 'arm64' && 'nx1' }} # Builds on NX1 self-hosted
+    env:
+      ARCH: ${{ matrix.arch }}
+      OS: linux
+      DOCKER_REGISTRY: ghcr.io/mutablelogic
+    steps:
+      - name: Install git
+        run: |
+          sudo apt -y update
+          sudo apt -y install build-essential git
+          git config --global advice.detachedHead false
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and Push
+        id: build      
+        run: |
+          git checkout v${{ needs.var.outputs.tag }}
+          make docker && make docker-push
+  manifest:
+    name: Manifest
+    needs:
+      - var 
+      - build
+    strategy:
+      matrix:
+        include:
+          - tag: ${{ needs.var.outputs.tag }}
+          - tag: latest # TODO: Skip this if the event calling is not publishing a release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create
+        run: |
+          docker manifest create ${{ needs.var.outputs.image }}:${{ matrix.tag }} \
+            --amend ${{ needs.var.outputs.image }}-linux-amd64:${{ needs.var.outputs.tag }} \
+            --amend ${{ needs.var.outputs.image }}-linux-arm64:${{ needs.var.outputs.tag }}
+      - name: Annotate
+        run: |
+          docker manifest annotate --arch arm64 --os linux \
+            ${{ needs.var.outputs.image }}:${{ matrix.tag  }} \
+            ${{ needs.var.outputs.image }}-linux-arm64:${{ needs.var.outputs.tag }}
+          docker manifest annotate --arch amd64 --os linux \
+            ${{ needs.var.outputs.image }}:${{ matrix.tag  }} \
+            ${{ needs.var.outputs.image }}-linux-amd64:${{ needs.var.outputs.tag }}
+          docker manifest push ${{ needs.var.outputs.image }}:${{ matrix.tag }}
+      - name: Push
+        run: |
+          docker manifest push ${{ needs.var.outputs.image }}:${{ matrix.tag }}
