@@ -12,13 +12,11 @@ Speech-to-Text in golang. This is an early development version.
 There are docker images for arm64 and amd64 (Intel). The arm64 image is built for
 Jetson GPU support specifically, but it will also run on Raspberry Pi's.
 
-In order to utilize a NVIDIA GPU, you'll need to have the 
+In order to utilize a NVIDIA GPU, you'll need to install the
 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) first.
 
-Have a volume available called "models" which can be used for storing the Whisper language
-models. You can see which models are available [here](https://huggingface.co/ggerganov/whisper.cpp).
-
-The following command will run the server on port 8080:
+A docker volume should be created called "whisper" can be used for storing the Whisper language
+models. You can see which models are available to download locally [here](https://huggingface.co/ggerganov/whisper.cpp). The following command will run the server on port 8080:
 
 ```bash
 docker run \
@@ -30,7 +28,9 @@ docker run \
 
 If you include a `-debug` flag at the end, you'll get more verbose output. The API is then
 available at `http://localhost:8080/v1` and it generally conforms to the
-[OpenAI API](https://platform.openai.com/docs/api-reference/audio).
+[OpenAI API](https://platform.openai.com/docs/api-reference/audio) spec.
+
+### Sample Usage
 
 In order to download a model, you can use the following command (for example):
 
@@ -56,6 +56,7 @@ And to transcribe an audio file, you can use the following command:
 curl -F "model=ggml-tiny.en-q8_0.bin" -F "file=@samples/jfk.wav" -F "language=en" localhost:8080/v1/audio/transcriptions
 ```
 
+Right now there's a limitation on the files: they must be mono WAV files at 16K sample rate.
 There's more information on the API [here](doc/API.md).
 
 ## Building
@@ -73,7 +74,6 @@ See all the other targets in the `Makefile` for more information.
 
 Still in development. It only accepts mono WAV files at 16K sample rate, for example. It also
 occasionally crashes, and the API is not fully implemented.
-
 
 ## Contributing & Distribution
 
