@@ -72,6 +72,15 @@ submodule: git-dep
 	@echo "Checking out submodules"
 	@${GIT} submodule update --init --recursive --remote
 
+# Submodule clean
+submodule-clean: git-dep
+	@echo "Cleaning submodules"
+	@${GIT} reset --hard
+	@${GIT} submodule sync --recursive
+	@${GIT} submodule update --init --force --recursive
+	@${GIT} clean -ffdx
+	@${GIT} submodule foreach --recursive git clean -ffdx	
+
 # Check for docker
 docker-dep:
 	@test -f "${DOCKER}" && test -x "${DOCKER}"  || (echo "Missing docker binary" && exit 1)
@@ -92,5 +101,9 @@ mkdir:
 # go mod tidy
 go-tidy: go-dep
 	@echo Tidy
-	@${GO} mod tidy
-	@${GO} clean
+	go mod tidy
+
+# Clean
+clean: submodule-clean go-tidy
+	@echo "Cleaning"
+	@rm -rf ${BUILD_DIR}
