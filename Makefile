@@ -11,6 +11,7 @@ DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 # Set docker tag
 BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
 ROOT_PATH := $(CURDIR)
+BUILD_DIR := build
 
 # Build docker container
 docker: docker-dep submodule
@@ -22,6 +23,16 @@ docker: docker-dep submodule
 		--build-arg SOURCE=${BUILD_MODULE} \
 		--build-arg VERSION=${VERSION} \
 		-f etc/Dockerfile.${ARCH} .
+
+# Targets
+all: build server
+
+# Make server
+server: mkdir libwhisper libggml
+	@echo "Building whisper-server"
+	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
+	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
+	 go build -o ${BUILD_DIR}/whisper-server ./cmd/server
 
 # Test whisper bindings
 test: libwhisper libggml
@@ -67,3 +78,8 @@ docker-dep:
 # Check for git
 git-dep:
 	@test -f "${GIT}" && test -x "${GIT}"  || (echo "Missing git binary" && exit 1)
+
+# Make build directory
+mkdir:
+	@echo Mkdir ${BUILD_DIR}
+	@install -d ${BUILD_DIR}

@@ -17,6 +17,10 @@ type client struct {
 	root *url.URL
 }
 
+type Client interface {
+	Get(ctx context.Context, w io.Writer, path string) error
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 

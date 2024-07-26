@@ -179,7 +179,9 @@ func Whisper_log_set(fn func(level LogLevel, text string)) {
 //	"de" -> 2
 //	"german" -> 2
 func (ctx *Context) Whisper_lang_id(lang string) int {
-	return int(C.whisper_lang_id(C.CString(lang)))
+	cStr := C.CString(lang)
+	defer C.free(unsafe.Pointer(cStr))
+	return int(C.whisper_lang_id(cStr))
 }
 
 // Largest language id (i.e. number of available languages - 1)
