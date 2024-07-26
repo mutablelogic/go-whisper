@@ -62,7 +62,8 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 	})
 
 	// Translate: POST /v1/audio/translations
-	//   Translates audio into english or another language
+	//   Translates audio into english or another language  - language parameter should be set to the
+	//   destination language of the audio. Will default to english if not set.
 	mux.HandleFunc(joinPath(base, "audio/translations"), func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
@@ -75,7 +76,8 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 	})
 
 	// Transcribe: POST /v1/audio/transcriptions
-	//   Transcribes audio into the input language
+	//   Transcribes audio into the input language - language parameter should be set to the source
+	//   language of the audio
 	mux.HandleFunc(joinPath(base, "audio/transcriptions"), func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
