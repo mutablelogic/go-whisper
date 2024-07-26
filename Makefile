@@ -101,7 +101,6 @@ mkdir:
 # go mod tidy
 go-tidy: go-dep
 	@echo Tidy
-	@go clean -modcache
 	@go mod tidy
 
 # Clean

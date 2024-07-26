@@ -207,13 +207,9 @@ func (w *Whisper) WithModelContext(model *Model, fn func(ctx *Context) error) er
 	return fn(ctx)
 }
 
-// Transcribe decoded samples with a context
+// Transcribe with a context
 func (w *Whisper) Transcribe(ctx *Context, samples []float32) (*Transcription, error) {
 	var result Transcription
-
-	// Set parameters for transcription
-	ctx.SetTranslate(false)
-	ctx.SetLanguage("")
 
 	// Perform the transcription
 	log.Print(ctx.Params())

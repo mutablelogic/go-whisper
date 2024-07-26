@@ -61,14 +61,29 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 		}
 	})
 
+	// Translate: POST /v1/audio/translations
+	//   Translates audio into english or another language  - language parameter should be set to the
+	//   destination language of the audio. Will default to english if not set.
+	mux.HandleFunc(joinPath(base, "audio/translations"), func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		switch r.Method {
+		case http.MethodPost:
+			TranscribeFile(r.Context(), whisper, w, r, false)
+		default:
+			httpresponse.Error(w, http.StatusMethodNotAllowed)
+		}
+	})
+
 	// Transcribe: POST /v1/audio/transcriptions
-	//   Transcribes audio into the input language
+	//   Transcribes audio into the input language - language parameter should be set to the source
+	//   language of the audio
 	mux.HandleFunc(joinPath(base, "audio/transcriptions"), func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		switch r.Method {
 		case http.MethodPost:
-			TranscribeFile(r.Context(), whisper, w, r)
+			TranscribeFile(r.Context(), whisper, w, r, true)
 		default:
 			httpresponse.Error(w, http.StatusMethodNotAllowed)
 		}
