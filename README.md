@@ -2,17 +2,12 @@
 
 Speech-to-Text in golang. This is an early development version.
 
-  * `cmd` are the start of the command-line tools
-  * `third_party` is a submodule for the whisper.cpp source
+* `cmd` contains an OpenAI-API compatible server
+* `pkg` contains the `whisper` service and http gateway
+* `sys` contains the `whisper` bindings to the `whisper.cpp` library
+* `third_party` is a submodule for the whisper.cpp source
 
-The bindings for whisper are here:
-
-  * https://github.com/ggerganov/whisper.cpp/tree/master/bindings/go
-
-The API documentation for those bindings is here:
-
-  * https://pkg.go.dev/github.com/ggerganov/whisper.cpp/bindings/go
-  * https://pkg.go.dev/github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper
+## Running
 
 ## Building
 
