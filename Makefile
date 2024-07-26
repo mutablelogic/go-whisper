@@ -93,4 +93,4 @@ mkdir:
 go-tidy: go-dep
 	@echo Tidy
 	@${GO} mod tidy
-	@${GO} clean	
+	@${GO} clean
