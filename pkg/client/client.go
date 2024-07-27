@@ -93,10 +93,11 @@ func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status 
 	return r.Model, nil
 }
 
-func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader) (*whisper.Transcription, error) {
+func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opt ...Opt) (*whisper.Transcription, error) {
 	var request struct {
-		Model string         `json:"model"`
 		File  multipart.File `json:"file"`
+		Model string         `json:"model"`
+		opts
 	}
 	var response whisper.Transcription
 
@@ -112,11 +113,53 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader) (*wh
 		Path: name,
 		Body: r,
 	}
+	for _, o := range opt {
+		if err := o(&request.opts); err != nil {
+			return nil, err
+		}
+	}
 
 	// Request->Response
 	if payload, err := client.NewMultipartRequest(request, httprequest.ContentTypeFormData); err != nil {
 		return nil, err
 	} else if err := c.DoWithContext(ctx, payload, &response, client.OptPath("audio/transcriptions"), client.OptNoTimeout()); err != nil {
+		return nil, err
+	}
+
+	// Return success
+	return &response, nil
+}
+
+func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opt ...Opt) (*whisper.Transcription, error) {
+	var request struct {
+		File  multipart.File `json:"file"`
+		Model string         `json:"model"`
+		opts
+	}
+	var response whisper.Transcription
+
+	// Get the name from the io.Reader
+	name := ""
+	if f, ok := r.(*os.File); ok {
+		name = filepath.Base(f.Name())
+	}
+
+	// Create the request
+	request.Model = model
+	request.File = multipart.File{
+		Path: name,
+		Body: r,
+	}
+	for _, o := range opt {
+		if err := o(&request.opts); err != nil {
+			return nil, err
+		}
+	}
+
+	// Request->Response
+	if payload, err := client.NewMultipartRequest(request, httprequest.ContentTypeFormData); err != nil {
+		return nil, err
+	} else if err := c.DoWithContext(ctx, payload, &response, client.OptPath("audio/translations"), client.OptNoTimeout()); err != nil {
 		return nil, err
 	}
 

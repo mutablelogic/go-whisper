@@ -30,6 +30,7 @@ type CLI struct {
 	Delete     DeleteCmd     `cmd:"delete" help:"Delete a model"`
 	Download   DownloadCmd   `cmd:"download" help:"Download a model"`
 	Transcribe TranscribeCmd `cmd:"transcribe" help:"Transcribe a file"`
+	Translate  TranslateCmd  `cmd:"translate" help:"Translate a file"`
 }
 
 func main() {

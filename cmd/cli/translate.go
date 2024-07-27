@@ -7,15 +7,15 @@ import (
 	"github.com/mutablelogic/go-whisper/pkg/client"
 )
 
-type TranscribeCmd struct {
+type TranslateCmd struct {
 	Model       string   `arg:"" required:"" help:"Model Identifier" type:"string"`
 	Path        string   `arg:"" required:"" help:"Audio File Path" type:"string"`
-	Language    string   `flag:"language" help:"Source Language" type:"string"`
+	Language    string   `flag:"language" required:"" help:"Target Language" type:"string"`
 	Prompt      string   `flag:"prompt" help:"Initial Prompt Identifier" type:"string"`
 	Temperature *float32 `flag:"temperature" help:"Temperature" type:"float32"`
 }
 
-func (cmd *TranscribeCmd) Run(ctx *Globals) error {
+func (cmd *TranslateCmd) Run(ctx *Globals) error {
 	r, err := os.Open(cmd.Path)
 	if err != nil {
 		return err
@@ -33,7 +33,7 @@ func (cmd *TranscribeCmd) Run(ctx *Globals) error {
 		opts = append(opts, client.OptTemperature(*cmd.Temperature))
 	}
 
-	transcription, err := ctx.api.Transcribe(ctx.ctx, cmd.Model, r, opts...)
+	transcription, err := ctx.api.Translate(ctx.ctx, cmd.Model, r, opts...)
 	if err != nil {
 		return err
 	}
