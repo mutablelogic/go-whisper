@@ -3,9 +3,12 @@ package whisper
 import (
 	"context"
 	"errors"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	// Packages
@@ -21,21 +24,6 @@ type Whisper struct {
 	pool   map[string]*ModelPool
 }
 
-type Transcription struct {
-	Task     string                 `json:"task,omitempty"`
-	Language string                 `json:"language,omitempty"`
-	Duration float64                `json:"duration,omitempty"`
-	Text     string                 `json:"text"`
-	Segments []TranscriptionSegment `json:"segments,omitempty"`
-}
-
-type TranscriptionSegment struct {
-	Id    int     `json:"id"`
-	Start float64 `json:"start"`
-	End   float64 `json:"end"`
-	Text  string  `json:"text"`
-}
-
 //////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
@@ -45,9 +33,8 @@ const (
 
 	// This is where the model is downloaded from
 	modelUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true"
-)
 
-const (
+	// This is the expected sample rate for transcription and translation (16KHz)
 	SampleRate = whisper.SampleRate
 )
 
@@ -82,7 +69,7 @@ func New(models string) (*Whisper, error) {
 func (w *Whisper) Close() error {
 	var result error
 
-	// Close the modelpools
+	// Close the model pools
 	for _, pool := range w.pool {
 		result = errors.Join(result, pool.Close())
 	}
@@ -94,14 +81,17 @@ func (w *Whisper) Close() error {
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
+// Return all models in the models directory
 func (w *Whisper) ListModels() []*Model {
 	return w.models.models
 }
 
+// Get a model by its Id, returns nil if the model does not exist
 func (w *Whisper) GetModelById(id string) *Model {
 	return w.models.ById(id)
 }
 
+// Delete a model by its id
 func (w *Whisper) DeleteModelById(id string) error {
 	model := w.models.ById(id)
 	if model == nil {
@@ -129,7 +119,11 @@ func (w *Whisper) DeleteModelById(id string) error {
 	return nil
 }
 
-func (w *Whisper) DownloadModel(ctx context.Context, name, dest string) (*Model, error) {
+// Download a model to the models directory. If the model already exists, it will be returned.
+// The destination directory is relative to the models directory. A function can be provided to
+// track the progress of the download. If no Content-Length is provided by the server, the total
+// bytes will be unknown and is set to zero.
+func (w *Whisper) DownloadModel(ctx context.Context, name, dest string, fn func(curBytes, totalBytes uint64)) (*Model, error) {
 	// If the model already exists, return it
 	model := w.models.ByPath(name, dest)
 	if model != nil {
@@ -153,13 +147,12 @@ func (w *Whisper) DownloadModel(ctx context.Context, name, dest string) (*Model,
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	// Download the model
-	// TODO: track progress
-	if err := w.client.Get(ctx, f, name); err != nil {
-		return nil, err
+	// Download the model, with callback. If an error occurs, the model is deleted again
+	if _, err := w.client.Get(ctx, &writer{Writer: f, fn: fn}, name); err != nil {
+		return nil, errors.Join(err, os.Remove(f.Name()))
 	}
-	f.Close()
 
 	// Rescan the models directory
 	if err := w.models.Rescan(); err != nil {
@@ -176,7 +169,9 @@ func (w *Whisper) DownloadModel(ctx context.Context, name, dest string) (*Model,
 	return model, nil
 }
 
-// Run with a context
+// Get a context for the specified model, which may load the model or return an existing one.
+// The context can then be used to run the Transcribe function. Returns os.ErrNotExist error
+// if the model does not exist, or if the context could not be created.
 func (w *Whisper) WithModelContext(model *Model, fn func(ctx *Context) error) error {
 	// Check model parameter
 	if model == nil {
@@ -201,13 +196,13 @@ func (w *Whisper) WithModelContext(model *Model, fn func(ctx *Context) error) er
 	}
 	defer pool.Put(ctx)
 
-	log.Println("Pool connections for model", model.Id, ":", pool.N())
-
 	// Execute the function
 	return fn(ctx)
 }
 
-// Transcribe with a context
+// Transcribe samples with a context. The samples should be 16KHz float32 samples in
+// a single channel. TODO: We need a low-latency streaming version of this function.
+// TODO: We need a callback for segment progress.
 func (w *Whisper) Transcribe(ctx *Context, samples []float32) (*Transcription, error) {
 	var result Transcription
 
@@ -238,4 +233,39 @@ func (w *Whisper) Transcribe(ctx *Context, samples []float32) (*Transcription, e
 
 	// Return the result
 	return &result, nil
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
+
+type writer struct {
+	io.Writer
+
+	// Current and total bytes
+	curBytes, totalBytes uint64
+
+	// Callback function
+	fn func(curBytes, totalBytes uint64)
+}
+
+// Collect number of bytes written
+func (w *writer) Write(p []byte) (int, error) {
+	n, err := w.Writer.Write(p)
+	if err == nil && w.fn != nil {
+		w.curBytes += uint64(n)
+		w.fn(w.curBytes, w.totalBytes)
+	}
+	return n, nil
+}
+
+// Collect total number of bytes
+func (w *writer) Header(h http.Header) error {
+	if contentLength := h.Get("Content-Length"); contentLength != "" {
+		if v, err := strconv.ParseUint(contentLength, 10, 64); err != nil {
+			return err
+		} else {
+			w.totalBytes = v
+		}
+	}
+	return nil
 }

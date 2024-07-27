@@ -7,9 +7,10 @@ import (
 	"mime/multipart"
 	"net/http"
 
+	// Packages
 	"github.com/go-audio/wav"
-	"github.com/mutablelogic/go-whisper/pkg/httprequest"
-	"github.com/mutablelogic/go-whisper/pkg/httpresponse"
+	"github.com/mutablelogic/go-server/pkg/httprequest"
+	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
 )
 
@@ -30,7 +31,7 @@ type reqTranscribe struct {
 
 func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.ResponseWriter, r *http.Request, translate bool) {
 	var req reqTranscribe
-	if err := httprequest.ReadBody(&req, r); err != nil {
+	if err := httprequest.Body(&req, r); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}

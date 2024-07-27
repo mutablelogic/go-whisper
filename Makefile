@@ -14,6 +14,23 @@ BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
 ROOT_PATH := $(CURDIR)
 BUILD_DIR := build
 
+# Targets
+all: build server cli
+
+# Make server
+server: mkdir go-tidy libwhisper libggml
+	@echo "Building whisper-server"
+	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
+	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
+	 ${GO} build -o ${BUILD_DIR}/whisper-server ./cmd/server
+
+# Make cli
+cli: mkdir go-tidy
+	@echo "Building whisper-cli"
+	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
+	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
+	 ${GO} build -o ${BUILD_DIR}/whisper-cli ./cmd/cli
+
 # Build docker container
 docker: docker-dep submodule
 	@echo build docker image: ${BUILD_TAG} for ${OS}/${ARCH}
@@ -25,22 +42,16 @@ docker: docker-dep submodule
 		--build-arg VERSION=${VERSION} \
 		-f etc/Dockerfile.${ARCH} .
 
-# Targets
-all: build server
-
-# Make server
-server: mkdir go-tidy libwhisper libggml
-	@echo "Building whisper-server"
-	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
-	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 ${GO} build -o ${BUILD_DIR}/whisper-server ./cmd/server
-
 # Test whisper bindings
 test: go-tidy libwhisper libggml
-	@echo "Running tests"
+	@echo "Running tests (sys)"
 	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
 	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
 	 ${GO} test -v ./sys/whisper/...
+	@echo "Running tests (pkg)"
+	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
+	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
+	 ${GO} test -v ./pkg/whisper/...
 
 # Build whisper-static-library
 libwhisper: submodule
