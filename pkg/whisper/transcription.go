@@ -7,10 +7,10 @@ import "encoding/json"
 
 type Transcription struct {
 	Task     string                 `json:"task,omitempty"`
-	Language string                 `json:"language,omitempty"`
-	Duration float64                `json:"duration,omitempty"`
-	Text     string                 `json:"text"`
-	Segments []TranscriptionSegment `json:"segments,omitempty"`
+	Language string                 `json:"language,omitempty" writer:",width:8"`
+	Duration float64                `json:"duration,omitempty" writer:",width:8,right"`
+	Text     string                 `json:"text" writer:",width:60,wrap"`
+	Segments []TranscriptionSegment `json:"segments,omitempty" writer:",width:40,wrap"`
 }
 
 type TranscriptionSegment struct {

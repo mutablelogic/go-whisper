@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	// Packages
-	"github.com/mutablelogic/go-whisper/pkg/httpresponse"
+	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
 )
 
@@ -28,8 +28,9 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 
 	// List Models: GET /v1/models
 	//   returns available models
-	// Download Model: POST /v1/models
-	//   downloads a model (requires application/json body)
+	// Download Model: POST /v1/models?stream={bool}
+	//   downloads a model from the server
+	//   if stream is true then progress is streamed back to the client
 	mux.HandleFunc(joinPath(base, "models"), func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 

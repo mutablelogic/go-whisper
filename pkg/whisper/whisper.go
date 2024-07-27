@@ -149,9 +149,9 @@ func (w *Whisper) DownloadModel(ctx context.Context, name, dest string, fn func(
 	}
 	defer f.Close()
 
-	// Download the model, with callback
+	// Download the model, with callback. If an error occurs, the model is deleted again
 	if _, err := w.client.Get(ctx, &writer{Writer: f, fn: fn}, name); err != nil {
-		return nil, err
+		return nil, errors.Join(err, os.Remove(f.Name()))
 	}
 
 	// Rescan the models directory
