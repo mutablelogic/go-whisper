@@ -1,6 +1,7 @@
 package whisper
 
 import (
+	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,6 +28,17 @@ type models struct {
 
 	// list of all models
 	models []*Model
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// STRINGIFY
+
+func (m *Model) String() string {
+	data, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return string(data)
 }
 
 //////////////////////////////////////////////////////////////////////////////

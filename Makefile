@@ -37,10 +37,14 @@ server: mkdir go-tidy libwhisper libggml
 
 # Test whisper bindings
 test: go-tidy libwhisper libggml
-	@echo "Running tests"
+#	@echo "Running tests (sys)"
+#	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
+#	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
+#	 ${GO} test -v ./sys/whisper/...
+	@echo "Running tests (pkg)"
 	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
 	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 ${GO} test -v ./sys/whisper/...
+	 ${GO} test -v ./pkg/whisper/...
 
 # Build whisper-static-library
 libwhisper: submodule

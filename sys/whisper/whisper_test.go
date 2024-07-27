@@ -14,6 +14,9 @@ import (
 
 const SAMPLE_JFK = "../../samples/jfk.wav"
 const SAMPLE_OLIVIERL = "../../samples/OlivierL.wav"
+const MODEL_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true"
+const MODEL_TINY = "ggml-tiny-q5_1.bin"
+const MODEL_MEDIUM = "ggml-medium-q5_0.bin" // approx 540MB
 
 func Test_whisper_001(t *testing.T) {
 	assert := assert.New(t)
@@ -37,11 +40,11 @@ func Test_whisper_002(t *testing.T) {
 	})
 
 	// Create a client for downloading the model
-	client := whisper.NewClient("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true")
+	client := whisper.NewClient(MODEL_URL)
 	assert.NotNil(client)
 
 	// Get a model - save to file
-	tmpfile, err := os.Create(filepath.Join(t.TempDir(), "ggml-tiny-q5_1.bin"))
+	tmpfile, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
@@ -49,7 +52,7 @@ func Test_whisper_002(t *testing.T) {
 
 	// Get the model
 	t.Log("Downloading model", tmpfile.Name())
-	err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
+	_, err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
 	assert.NoError(err)
 
 	// Call full encode with callback
@@ -184,11 +187,11 @@ func Test_whisper_003(t *testing.T) {
 	})
 
 	// Create a client for downloading the model
-	client := whisper.NewClient("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true")
+	client := whisper.NewClient(MODEL_URL)
 	assert.NotNil(client)
 
 	// Get a model - save to file
-	tmpfile, err := os.Create(filepath.Join(t.TempDir(), "ggml-tiny-q5_1.bin"))
+	tmpfile, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
@@ -196,7 +199,7 @@ func Test_whisper_003(t *testing.T) {
 
 	// Get the model
 	t.Log("Downloading model", tmpfile.Name())
-	err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
+	_, err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
 	assert.NoError(err)
 
 	// Call full encode with callbacks SAMPLE_OLIVIERL (fr)
