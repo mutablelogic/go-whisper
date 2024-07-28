@@ -25,7 +25,7 @@ server: mkdir go-tidy libwhisper libggml
 	 ${GO} build -o ${BUILD_DIR}/whisper-server ./cmd/server
 
 # Make cli
-cli: mkdir go-tidy
+cli: mkdir go-tidy libwhisper libggml
 	@echo "Building whisper-cli"
 	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
 	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
