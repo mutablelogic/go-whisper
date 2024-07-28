@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const MODEL_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true"
+const MODEL_TINY = "ggml-tiny-q5_1.bin"
+const MODEL_MEDIUM = "ggml-medium-q5_0.bin" // approx 540MB
+
 func Test_model_001(t *testing.T) {
 	assert := assert.New(t)
 	client := whisper.NewClient(MODEL_URL)
