@@ -22,7 +22,7 @@ ifeq ($(GGML_CUDA),1)
 endif
 
 # Targets
-all: build server cli
+all: server cli
 
 # Generate the pkg-config files
 generate: mkdir go-tidy

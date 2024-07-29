@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 
 	// Packages
@@ -46,7 +47,7 @@ func New(path string, opt ...Opt) (*Whisper, error) {
 	var o opts
 
 	// Set options
-	o.MaxConcurrent = 1
+	o.MaxConcurrent = runtime.NumCPU()
 	for _, fn := range opt {
 		if err := fn(&o); err != nil {
 			return nil, err

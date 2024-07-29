@@ -56,7 +56,7 @@ func main() {
 
 	// Create a whisper service
 	log.Println("Storing models at", dir)
-	whisper, err := whisper.New(dir)
+	whisper, err := whisper.New(dir, whisper.OptMaxConcurrent(1))
 	if err != nil {
 		log.Println(err)
 		os.Exit(-2)

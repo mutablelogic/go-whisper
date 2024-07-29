@@ -8,6 +8,7 @@ import (
 
 	// Packages
 
+	"github.com/go-audio/wav"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
@@ -67,28 +68,32 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	defer f.Close()
 
 	// Read samples
-	//buf, err := wav.NewDecoder(f).FullPCMBuffer()
-	//if err != nil {
-	//	httpresponse.Error(w, http.StatusInternalServerError, err.Error())
-	//	return
-	//}
+	buf, err := wav.NewDecoder(f).FullPCMBuffer()
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	// Get context for the model, perform transcription
 	var result *whisper.Transcription
-	if err := service.WithModel(model, func(ctx *task.Context) error {
+	if err := service.WithModel(model, func(task *task.Context) error {
+		// Check model
+		if translate && !task.CanTranslate() {
+			return ErrBadParameter.With("model is not multilingual, cannot translate")
+		}
+
 		// Set parameters for transcription & translation, default to english
-		ctx.SetTranslate(translate)
+		task.SetTranslate(translate)
 		if req.Language != nil {
-			if err := ctx.SetLanguage(*req.Language); err != nil {
+			if err := task.SetLanguage(*req.Language); err != nil {
 				return err
 			}
 		} else if translate {
-			if err := ctx.SetLanguage("en"); err != nil {
+			if err := task.SetLanguage("en"); err != nil {
 				return err
 			}
 		}
-
-		// Set prompt and temperature
+		// TODO Set prompt and temperature
 		/*
 			if req.Prompt != nil {
 				ctx.SetPrompt(*req.Prompt)
@@ -98,8 +103,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 			}
 		*/
 		// Perform the transcription, return any errors
-		//result, err = service.Transcribe(ctx, buf.AsFloat32Buffer().Data)
-		return ErrNotImplemented
+		return task.Transcribe(ctx, buf.AsFloat32Buffer().Data)
 	}); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return

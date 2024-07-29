@@ -7,7 +7,6 @@ package whisper
 #cgo pkg-config: libwhisper
 #cgo darwin pkg-config: libwhisper-darwin
 #cgo linux pkg-config: libwhisper-linux
-#cgo arm64 pkg-config: cuda-12.2 cublas-12.2 cudart-12.2
 */
 import "C"
 

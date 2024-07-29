@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	// Packages
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
@@ -19,6 +20,8 @@ import (
 
 // Context is used for running the transcription or translation
 type Context struct {
+	sync.Mutex
+
 	model   string
 	whisper *whisper.Context
 
@@ -36,6 +39,9 @@ func New() *Context {
 
 // Init the context
 func (m *Context) Init(path string, model *model.Model, gpu int) error {
+	m.Lock()
+	defer m.Unlock()
+
 	// Check parameters
 	if model == nil {
 		return ErrBadParameter
@@ -132,29 +138,40 @@ func (task *Context) CopyParams() {
 	task.params.SetLanguage("auto")
 }
 
+// Model is multilingual and can translate
+func (task *Context) CanTranslate() bool {
+	return whisper.Whisper_is_multilingual(task.whisper)
+}
+
 // Transcribe samples. The samples should be 16KHz float32 samples in
 // a single channel.
 // TODO: We need a low-latency streaming version of this function.
 // TODO: We need a callback for segment progress.
 func (task *Context) Transcribe(ctx context.Context, samples []float32) error {
 	// Set the 'abort' function
-	task.params.SetAbortCallback(task.whisper, func() bool {
+	/*task.params.SetAbortCallback(task.whisper, func() bool {
 		select {
 		case <-ctx.Done():
 			return true
 		default:
 			return false
 		}
-	})
+	})*/
 
 	// Set the 'progress' function
-	task.params.SetProgressCallback(task.whisper, func(percent int) {
-		fmt.Printf("Progress: %v\n", percent)
-	})
+	//task.params.SetProgressCallback(task.whisper, func(percent int) {
+	//	fmt.Printf("Progress: %v\n", percent)
+	//})
 
 	// Perform the transcription
 	if err := whisper.Whisper_full(task.whisper, task.params, samples); err != nil {
 		return err
+	}
+
+	// Get segments
+	for i := 0; i < task.whisper.NumSegments(); i++ {
+		segment := task.whisper.Segment(i)
+		fmt.Printf("Segment: %v\n", segment.Text)
 	}
 
 	// Return success

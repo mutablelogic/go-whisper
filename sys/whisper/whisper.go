@@ -68,6 +68,11 @@ func Whisper_lang_str_full(id int) string {
 	return C.GoString(C.whisper_lang_str_full(C.int(id)))
 }
 
+// Return model capabilities
+func Whisper_is_multilingual(ctx *Context) bool {
+	return C.whisper_is_multilingual((*C.struct_whisper_context)(ctx)) != 0
+}
+
 // Run the entire model: PCM -> log mel spectrogram -> encoder -> decoder -> text
 // Not thread safe for same context
 // Uses the specified decoding strategy to obtain the text.
