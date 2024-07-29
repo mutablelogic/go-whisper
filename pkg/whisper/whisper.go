@@ -5,8 +5,9 @@ import (
 	"errors"
 
 	// Packages
-	"github.com/mutablelogic/go-whisper/pkg/whisper/model"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/pool"
+	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
+	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
+	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -123,21 +124,21 @@ func (w *Whisper) DownloadModel(ctx context.Context, path string, fn func(curByt
 	return w.store.Download(ctx, path, fn)
 }
 
-// Get a context for the specified model, which may load the model or
+// Get a task for the specified model, which may load the model or
 // return an existing one. The context can then be used to run the Transcribe
 // function, and after the context is returned to the pool.
-func (w *Whisper) WithModel(model *model.Model, fn func(ctx *pool.Context) error) error {
+func (w *Whisper) WithModel(model *model.Model, fn func(task *task.Context) error) error {
 	if model == nil || fn == nil {
 		return ErrBadParameter
 	}
 
 	// Get a context from the pool
-	ctx, err := w.pool.Get(model)
+	task, err := w.pool.Get(model)
 	if err != nil {
 		return err
 	}
-	defer w.pool.Put(ctx)
+	defer w.pool.Put(task)
 
 	// Execute the function
-	return fn(ctx)
+	return fn(task)
 }

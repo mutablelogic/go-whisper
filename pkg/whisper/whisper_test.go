@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	// Packages
-	"github.com/mutablelogic/go-whisper/pkg/whisper"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/pool"
-	"github.com/stretchr/testify/assert"
+	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
+	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	assert "github.com/stretchr/testify/assert"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -85,7 +85,7 @@ func Test_whisper_003(t *testing.T) {
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *task.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -96,7 +96,7 @@ func Test_whisper_003(t *testing.T) {
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *task.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -107,7 +107,7 @@ func Test_whisper_003(t *testing.T) {
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *task.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -135,7 +135,7 @@ func Test_whisper_004(t *testing.T) {
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *task.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -147,7 +147,7 @@ func Test_whisper_004(t *testing.T) {
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *task.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -159,7 +159,7 @@ func Test_whisper_004(t *testing.T) {
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		err := service.WithModel(model, func(ctx *pool.Context) error {
+		err := service.WithModel(model, func(ctx *task.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		})

@@ -1,13 +1,11 @@
 package pool
 
 import (
+	"fmt"
 
 	// Packages
-	"fmt"
-	"path/filepath"
-
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
-	"github.com/mutablelogic/go-whisper/sys/whisper"
+	context "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -25,13 +23,6 @@ type ContextPool struct {
 	path string
 }
 
-// Context is used for running the transcription or translation
-type Context struct {
-	Model   *model.Model
-	Context *whisper.Context
-	Params  whisper.FullParams
-}
-
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
@@ -40,7 +31,7 @@ type Context struct {
 func NewContextPool(path string, max int32) *ContextPool {
 	pool := new(ContextPool)
 	pool.Pool = NewPool(max, func() any {
-		return &Context{}
+		return context.New()
 	})
 	pool.path = path
 
@@ -53,65 +44,24 @@ func (m *ContextPool) Close() error {
 	return m.Pool.Close()
 }
 
-// Init the context
-func (m *Context) Init(path string, model *model.Model) error {
-	// Check parameters
-	if model == nil {
-		return ErrBadParameter
-	}
-
-	// Get a context
-	ctx := whisper.Whisper_init_from_file_with_params(filepath.Join(path, model.Path), whisper.DefaultContextParams())
-	if ctx == nil {
-		return ErrInternalAppError.With("whisper_init_from_file_with_params")
-	}
-
-	// Set resources
-	m.Context = ctx
-	m.Model = model
-
-	// Return success
-	return nil
-}
-
-// Close the context and release all resources
-func (m *Context) Close() error {
-	var result error
-
-	// Do nothing if nil
-	if m == nil {
-		return nil
-	}
-
-	// Release resources
-	if m.Context != nil {
-		whisper.Whisper_free(m.Context)
-	}
-	m.Context = nil
-	m.Model = nil
-
-	// Return any errors
-	return result
-}
-
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
 // Get a context from the pool, for a model
-func (m *ContextPool) Get(model *model.Model) (*Context, error) {
+func (m *ContextPool) Get(model *model.Model) (*context.Context, error) {
 	// Check parameters
 	if model == nil {
 		return nil, ErrBadParameter
 	}
 
 	// Get a context from the pool
-	ctx, ok := m.Pool.Get().(*Context)
+	ctx, ok := m.Pool.Get().(*context.Context)
 	if !ok || ctx == nil {
 		return nil, ErrChannelBlocked.With("unable to get a context from the pool, try again later")
 	}
 
 	// If the model matches, return it
-	if ctx.Model != nil && ctx.Model.Id == model.Id {
+	if ctx.Is(model) {
 		return ctx, nil
 	}
 
@@ -130,7 +80,7 @@ func (m *ContextPool) Get(model *model.Model) (*Context, error) {
 }
 
 // Put a context back into the pool
-func (m *ContextPool) Put(ctx *Context) {
+func (m *ContextPool) Put(ctx *context.Context) {
 	m.Pool.Put(ctx)
 }
 

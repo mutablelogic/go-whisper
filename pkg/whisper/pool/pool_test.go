@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	// Packages
 	"github.com/mutablelogic/go-whisper/pkg/whisper/pool"
 )
 
