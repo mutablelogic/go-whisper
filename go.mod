@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/alecthomas/kong v0.9.0
+	github.com/djthorpe/go-errors v1.0.3
 	github.com/djthorpe/go-tablewriter v0.0.7
 	github.com/go-audio/wav v1.1.0
 	github.com/mutablelogic/go-client v1.0.8
@@ -13,7 +14,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/djthorpe/go-errors v1.0.3 // indirect
 	github.com/go-audio/audio v1.0.0 // indirect
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect

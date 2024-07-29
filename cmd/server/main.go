@@ -13,8 +13,8 @@ import (
 	// Packages
 	context "github.com/mutablelogic/go-server/pkg/context"
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
-	api "github.com/mutablelogic/go-whisper/pkg/api"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
+	api "github.com/mutablelogic/go-whisper/pkg/whisper/api"
 	sys "github.com/mutablelogic/go-whisper/sys/whisper"
 )
 

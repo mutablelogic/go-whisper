@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	// Packages
 	"github.com/mutablelogic/go-whisper/sys/whisper"
 	"github.com/stretchr/testify/assert"
 )

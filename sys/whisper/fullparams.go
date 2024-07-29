@@ -11,9 +11,6 @@ import (
 
 /*
 #cgo pkg-config: libwhisper
-#cgo darwin pkg-config: libwhisper-darwin
-#cgo linux pkg-config: libwhisper-linux
-
 #include <whisper.h>
 #include <stdio.h>
 #include <stdbool.h>
