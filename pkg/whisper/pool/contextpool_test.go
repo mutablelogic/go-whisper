@@ -9,7 +9,7 @@ import (
 )
 
 func Test_contextpool_001(t *testing.T) {
-	var pool = pool.NewContextPool(t.TempDir(), 2)
+	var pool = pool.NewContextPool(t.TempDir(), 2, 0)
 
 	model1, err := pool.Get(&model.Model{
 		Id: "model1",

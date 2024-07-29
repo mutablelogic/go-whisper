@@ -2,12 +2,16 @@ package whisper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	// Packages
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
 	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -56,10 +60,21 @@ func New(path string, opt ...Opt) (*Whisper, error) {
 	} else {
 		w.store = store
 	}
-	if pool := pool.NewContextPool(path, int32(o.MaxConcurrent)); pool == nil {
+
+	if pool := pool.NewContextPool(path, o.MaxConcurrent, o.gpu); pool == nil {
 		return nil, ErrInternalAppError
 	} else {
 		w.pool = pool
+	}
+
+	// Logging
+	if o.logfn != nil {
+		whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+			if !o.debug && level > whisper.LogLevelError {
+				return
+			}
+			o.logfn(fmt.Sprintf("[%s] %s", level, strings.TrimSpace(text)))
+		})
 	}
 
 	// Return success
@@ -81,6 +96,27 @@ func (w *Whisper) Close() error {
 
 	// Return any errors
 	return result
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// STRINGIFY
+
+func (w *Whisper) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Store *model.Store      `json:"store"`
+		Pool  *pool.ContextPool `json:"pool"`
+	}{
+		Store: w.store,
+		Pool:  w.pool,
+	})
+}
+
+func (w *Whisper) String() string {
+	data, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return string(data)
 }
 
 //////////////////////////////////////////////////////////////////////////////
