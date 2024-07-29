@@ -175,6 +175,9 @@ func (w *Whisper) WithModel(model *model.Model, fn func(task *task.Context) erro
 	}
 	defer w.pool.Put(task)
 
+	// Copy parameters
+	task.CopyParams()
+
 	// Execute the function
 	return fn(task)
 }
