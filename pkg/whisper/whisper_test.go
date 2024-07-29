@@ -13,6 +13,8 @@ import (
 	. "github.com/djthorpe/go-errors"
 )
 
+const MODEL_TINY = "ggml-tiny.en-q5_1.bin"
+
 func Test_whisper_001(t *testing.T) {
 	assert := assert.New(t)
 	service, err := whisper.New(t.TempDir())
@@ -39,26 +41,26 @@ func Test_whisper_002(t *testing.T) {
 
 	t.Run("Download", func(t *testing.T) {
 		// Download a model
-		model, err := service.DownloadModel(context.Background(), "ggml-tiny.en-q5_1.bin", nil)
+		model, err := service.DownloadModel(context.Background(), MODEL_TINY, nil)
 		assert.NoError(err)
 		t.Log(model)
 	})
 
 	t.Run("Exists", func(t *testing.T) {
 		// Get the model
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 	})
 
 	t.Run("Delete", func(t *testing.T) {
 		// Delete the model
-		err := service.DeleteModelById("ggml-tiny.en-q5_1.bin")
+		err := service.DeleteModelById(MODEL_TINY)
 		assert.NoError(err)
 	})
 
 	t.Run("NotExists", func(t *testing.T) {
 		// Get the model
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.Nil(model)
 	})
 }
@@ -73,39 +75,39 @@ func Test_whisper_003(t *testing.T) {
 
 	t.Run("Download", func(t *testing.T) {
 		// Download a model
-		model, err := service.DownloadModel(context.Background(), "ggml-tiny.en-q5_1.bin", nil)
+		model, err := service.DownloadModel(context.Background(), MODEL_TINY, nil)
 		assert.NoError(err)
 		t.Log(model)
 	})
 
 	t.Run("WithModelContext1", func(t *testing.T) {
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
 	})
 
 	t.Run("WithModelContext2", func(t *testing.T) {
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
 	})
 
 	t.Run("WithModelContext3", func(t *testing.T) {
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -122,18 +124,18 @@ func Test_whisper_004(t *testing.T) {
 
 	t.Run("Download", func(t *testing.T) {
 		// Download a model
-		model, err := service.DownloadModel(context.Background(), "ggml-tiny.en-q5_1.bin", nil)
+		model, err := service.DownloadModel(context.Background(), MODEL_TINY, nil)
 		assert.NoError(err)
 		t.Log(model)
 	})
 
 	t.Run("WithModelContext1", func(t *testing.T) {
 		t.Parallel()
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -141,11 +143,11 @@ func Test_whisper_004(t *testing.T) {
 
 	t.Run("WithModelContext2", func(t *testing.T) {
 		t.Parallel()
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+		assert.NoError(service.WithModel(model, func(ctx *pool.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		}))
@@ -153,11 +155,11 @@ func Test_whisper_004(t *testing.T) {
 
 	t.Run("WithModelContext3", func(t *testing.T) {
 		t.Parallel()
-		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		model := service.GetModelById(MODEL_TINY)
 		assert.NotNil(model)
 
 		// Get the model for the first time
-		err := service.WithModelContext(model, func(ctx *pool.Context) error {
+		err := service.WithModel(model, func(ctx *pool.Context) error {
 			assert.NotNil(ctx)
 			return nil
 		})

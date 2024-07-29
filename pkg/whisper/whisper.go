@@ -123,9 +123,10 @@ func (w *Whisper) DownloadModel(ctx context.Context, path string, fn func(curByt
 	return w.store.Download(ctx, path, fn)
 }
 
-// Get a context for the specified model, which may load the model or return an existing one.
-// The context can then be used to run the Transcribe function.
-func (w *Whisper) WithModelContext(model *model.Model, fn func(ctx *pool.Context) error) error {
+// Get a context for the specified model, which may load the model or
+// return an existing one. The context can then be used to run the Transcribe
+// function, and after the context is returned to the pool.
+func (w *Whisper) WithModel(model *model.Model, fn func(ctx *pool.Context) error) error {
 	if model == nil || fn == nil {
 		return ErrBadParameter
 	}
