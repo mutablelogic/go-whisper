@@ -3,12 +3,13 @@ package pool_test
 import (
 	"testing"
 
+	// Packages
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/pool"
+	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
 )
 
 func Test_contextpool_001(t *testing.T) {
-	var pool = pool.NewContextPool(t.TempDir(), 2)
+	var pool = pool.NewContextPool(t.TempDir(), 2, 0)
 
 	model1, err := pool.Get(&model.Model{
 		Id: "model1",

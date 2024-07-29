@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"sync"
 
 	// Packages
+
 	"github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports
@@ -63,6 +65,36 @@ func NewStore(path, ext, modelUrl string) (*Store, error) {
 
 	// Return success
 	return store, nil
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// STRINGIFY
+
+func (s *Store) MarshalJSON() ([]byte, error) {
+	modelNames := func() []string {
+		result := make([]string, len(s.models))
+		for i, model := range s.models {
+			result[i] = model.Id
+		}
+		return result
+	}
+	return json.Marshal(struct {
+		Path   string   `json:"path"`
+		Ext    string   `json:"ext,omitempty"`
+		Models []string `json:"models"`
+	}{
+		Path:   s.path,
+		Ext:    s.ext,
+		Models: modelNames(),
+	})
+}
+
+func (s *Store) String() string {
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return string(data)
 }
 
 //////////////////////////////////////////////////////////////////////////////

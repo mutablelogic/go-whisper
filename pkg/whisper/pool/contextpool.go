@@ -1,13 +1,12 @@
 package pool
 
 import (
+	"encoding/json"
+	"fmt"
 
 	// Packages
-	"fmt"
-	"path/filepath"
-
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
-	"github.com/mutablelogic/go-whisper/sys/whisper"
+	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -23,13 +22,9 @@ type ContextPool struct {
 
 	// Base path for models
 	path string
-}
 
-// Context is used for running the transcription or translation
-type Context struct {
-	Model   *model.Model
-	Context *whisper.Context
-	Params  whisper.FullParams
+	// GPU flags
+	gpu int
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -37,12 +32,15 @@ type Context struct {
 
 // Create a new context pool of context objects, up to 'max' items
 // Set the path for the model storage
-func NewContextPool(path string, max int32) *ContextPool {
+// If GPU is -1 then disable, if 0 then use default, if >0 then enable
+// and use the specified device
+func NewContextPool(path string, max int, gpu int) *ContextPool {
 	pool := new(ContextPool)
 	pool.Pool = NewPool(max, func() any {
-		return &Context{}
+		return task.New()
 	})
 	pool.path = path
+	pool.gpu = gpu
 
 	// Return success
 	return pool
@@ -53,84 +51,63 @@ func (m *ContextPool) Close() error {
 	return m.Pool.Close()
 }
 
-// Init the context
-func (m *Context) Init(path string, model *model.Model) error {
-	// Check parameters
-	if model == nil {
-		return ErrBadParameter
-	}
+//////////////////////////////////////////////////////////////////////////////
+// STRINGIFY
 
-	// Get a context
-	ctx := whisper.Whisper_init_from_file_with_params(filepath.Join(path, model.Path), whisper.DefaultContextParams())
-	if ctx == nil {
-		return ErrInternalAppError.With("whisper_init_from_file_with_params")
-	}
-
-	// Set resources
-	m.Context = ctx
-	m.Model = model
-
-	// Return success
-	return nil
+func (m *ContextPool) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Gpu int `json:"gpu"`
+		N   int `json:"n"`
+		Max int `json:"max"`
+	}{
+		Gpu: m.gpu,
+		N:   m.N(),
+		Max: m.max,
+	})
 }
 
-// Close the context and release all resources
-func (m *Context) Close() error {
-	var result error
-
-	// Do nothing if nil
-	if m == nil {
-		return nil
+func (m *ContextPool) String() string {
+	data, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err.Error()
 	}
-
-	// Release resources
-	if m.Context != nil {
-		whisper.Whisper_free(m.Context)
-	}
-	m.Context = nil
-	m.Model = nil
-
-	// Return any errors
-	return result
+	return string(data)
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
 // Get a context from the pool, for a model
-func (m *ContextPool) Get(model *model.Model) (*Context, error) {
+func (m *ContextPool) Get(model *model.Model) (*task.Context, error) {
 	// Check parameters
 	if model == nil {
 		return nil, ErrBadParameter
 	}
 
 	// Get a context from the pool
-	ctx, ok := m.Pool.Get().(*Context)
-	if !ok || ctx == nil {
+	t, ok := m.Pool.Get().(*task.Context)
+	if !ok || t == nil {
 		return nil, ErrChannelBlocked.With("unable to get a context from the pool, try again later")
 	}
 
-	// If the model matches, return it
-	if ctx.Model != nil && ctx.Model.Id == model.Id {
-		return ctx, nil
-	}
-
-	// Model didn't match: close the context
-	if err := ctx.Close(); err != nil {
+	// If the model matches, return it, or else release the resources
+	if t.Is(model) {
+		return t, nil
+	} else if err := t.Close(); err != nil {
 		return nil, err
 	}
 
 	// Initialise the context
-	if err := ctx.Init(m.path, model); err != nil {
+	if err := t.Init(m.path, model, m.gpu); err != nil {
 		return nil, err
 	}
 
 	// Return the context
-	return ctx, nil
+	return t, nil
 }
 
 // Put a context back into the pool
-func (m *ContextPool) Put(ctx *Context) {
+func (m *ContextPool) Put(ctx *task.Context) {
 	m.Pool.Put(ctx)
 }
 

@@ -99,10 +99,10 @@ func DefaultFullParams(strategy SamplingStrategy) FullParams {
 func (ctx FullParams) MarshalJSON() ([]byte, error) {
 	type j struct {
 		Strategy                SamplingStrategy `json:"strategy"`
-		NumThreads              int              `json:"n_threads"`
-		MaxTextCtx              int              `json:"n_max_text_ctx"` // max tokens to use from past text as prompt for the decoder
-		OffsetMS                int              `json:"offset_ms"`      // start offset in ms
-		DurationMS              int              `json:"duration_ms"`    // audio duration to process in ms
+		NumThreads              int              `json:"n_threads,omitempty"`
+		MaxTextCtx              int              `json:"n_max_text_ctx,omitempty"` // max tokens to use from past text as prompt for the decoder
+		OffsetMS                int              `json:"offset_ms,omitempty"`      // start offset in ms
+		DurationMS              int              `json:"duration_ms,omitempty"`    // audio duration to process in ms
 		Translate               bool             `json:"translate,omitempty"`
 		NoContext               bool             `json:"no_context,omitempty"`       // do not use past transcription (if any) as initial prompt for the decoder
 		NoTimestamps            bool             `json:"no_timestamps,omitempty"`    // do not generate timestamps

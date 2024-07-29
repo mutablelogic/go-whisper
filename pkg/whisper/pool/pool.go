@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"sync"
-	"sync/atomic"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -14,14 +13,14 @@ import (
 // This acts as a cache so we don't need to reload models
 // If the pool is full, then Get will return nil
 type Pool struct {
-	// Pool of context objects
-	pool sync.Pool
+	sync.RWMutex
 
-	// Number of contexts in the pool
-	n int32
-
-	// Maximum number of contexts in the pool
-	max, empty int32
+	// The pool
+	pool  []any
+	fn    NewFunc
+	n     int
+	max   int
+	empty bool
 }
 
 // Create a new object to place in the pool
@@ -30,20 +29,17 @@ type NewFunc func() any
 ////////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-// Create a new pool of context objects, up to 'max'
-// objects
-func NewPool(max int32, fn NewFunc) *Pool {
+// Create a new pool of context objects, up to 'max' objects
+func NewPool(max int, fn NewFunc) *Pool {
 	// Max needs to be one or more
 	if max <= 0 {
 		return nil
 	}
 	// Create pool
-	pool := &Pool{max: max}
-	pool.pool.New = func() any {
-		if pool.n >= pool.max {
-			return nil
-		}
-		if int(atomic.LoadInt32(&pool.empty)) != 0 {
+	pool := new(Pool)
+	pool.max = max
+	pool.fn = func() any {
+		if pool.atCapacity() {
 			return nil
 		}
 		return fn()
@@ -57,9 +53,9 @@ func (m *Pool) Close() error {
 	var result error
 
 	// We repeatedly call Get until we get nil
-	atomic.StoreInt32(&m.empty, 1)
+	m.setEmpty(true)
 	for {
-		ctx := m.pool.Get()
+		ctx := m.Get()
 		if ctx == nil {
 			break
 		}
@@ -76,25 +72,53 @@ func (m *Pool) Close() error {
 ////////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-// Returns an unused context, or nil if the maximum number of contexts has been reached
+// Returns an item, or nil if the maximum number of contexts has been reached
 func (m *Pool) Get() any {
-	// Get a context from the pool
-	if ctx := m.pool.Get(); ctx != nil {
-		atomic.AddInt32(&m.n, 1)
-		return ctx
+	m.Lock()
+	defer m.Unlock()
+
+	// Create a new item
+	var item any
+	if len(m.pool) > 0 {
+		item, m.pool = m.pool[0], m.pool[1:]
+	} else {
+		item = m.fn()
+		if item != nil {
+			m.n++
+		}
 	}
-	return nil
+	return item
 }
 
 // Puts the context back in the pool
 func (m *Pool) Put(ctx any) {
+	m.Lock()
+	defer m.Unlock()
+
 	if ctx != nil {
-		atomic.AddInt32(&m.n, -1)
-		m.pool.Put(ctx)
+		m.pool = append(m.pool, ctx)
+		m.n--
 	}
 }
 
 // Return the number of contexts in the pool
 func (m *Pool) N() int {
-	return int(atomic.LoadInt32(&m.n))
+	m.RLock()
+	defer m.RUnlock()
+	return m.n
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
+
+// Return true if pool is at capacity
+func (m *Pool) atCapacity() bool {
+	return m.n >= m.max || m.empty
+}
+
+// Set pool in drain mode, no more contexts will be added
+func (m *Pool) setEmpty(v bool) {
+	m.Lock()
+	defer m.Unlock()
+	m.empty = v
 }
