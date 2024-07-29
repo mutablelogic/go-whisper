@@ -8,7 +8,7 @@ require (
 	github.com/djthorpe/go-tablewriter v0.0.8
 	github.com/go-audio/wav v1.1.0
 	github.com/mutablelogic/go-client v1.0.9
-	github.com/mutablelogic/go-media v1.6.7
+	github.com/mutablelogic/go-media v1.6.8
 	github.com/mutablelogic/go-server v1.4.13
 	github.com/stretchr/testify v1.9.0
 )
