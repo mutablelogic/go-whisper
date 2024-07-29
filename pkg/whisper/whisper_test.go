@@ -2,17 +2,16 @@ package whisper_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	// Packages
-	"github.com/go-audio/wav"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/pool"
 	"github.com/stretchr/testify/assert"
-)
 
-const MODEL_TINY = "ggml-tiny-q5_1.bin"
-const SAMPLES_DE = "../../samples/ge-podcast.wav"
+	// Namespace imports
+	. "github.com/djthorpe/go-errors"
+)
 
 func Test_whisper_001(t *testing.T) {
 	assert := assert.New(t)
@@ -30,26 +29,38 @@ func Test_whisper_002(t *testing.T) {
 	if !assert.Nil(err) {
 		t.SkipNow()
 	}
-	assert.NotNil(service)
-	defer assert.NoError(service.Close())
+	defer service.Close()
 
-	// Load a model
-	model, err := service.DownloadModel(context.Background(), MODEL_TINY, "", func(cur, total uint64) {
-		t.Logf("Downloaded %d bytes of %d", cur, total)
+	t.Run("NotFound", func(t *testing.T) {
+		// Download a model - not found
+		_, err = service.DownloadModel(context.Background(), "notfound.bin", nil)
+		assert.ErrorIs(err, ErrNotFound)
 	})
-	if !assert.NoError(err) {
-		t.SkipNow()
-	}
-	assert.NotNil(model)
 
-	// Get the model by ID
-	model2 := service.GetModelById(model.Id)
-	assert.NotNil(model2)
-	assert.Equal(model, model2)
+	t.Run("Download", func(t *testing.T) {
+		// Download a model
+		model, err := service.DownloadModel(context.Background(), "ggml-tiny.en-q5_1.bin", nil)
+		assert.NoError(err)
+		t.Log(model)
+	})
 
-	// Delete the model by ID
-	assert.NoError(service.DeleteModelById(model.Id))
+	t.Run("Exists", func(t *testing.T) {
+		// Get the model
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
+	})
 
+	t.Run("Delete", func(t *testing.T) {
+		// Delete the model
+		err := service.DeleteModelById("ggml-tiny.en-q5_1.bin")
+		assert.NoError(err)
+	})
+
+	t.Run("NotExists", func(t *testing.T) {
+		// Get the model
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.Nil(model)
+	})
 }
 
 func Test_whisper_003(t *testing.T) {
@@ -58,54 +69,98 @@ func Test_whisper_003(t *testing.T) {
 	if !assert.Nil(err) {
 		t.SkipNow()
 	}
-	assert.NotNil(service)
-	defer assert.NoError(service.Close())
+	defer service.Close()
 
-	// Load a model
-	model, err := service.DownloadModel(context.Background(), MODEL_TINY, "", func(cur, total uint64) {
-		t.Logf("Downloaded %d bytes of %d", cur, total)
+	t.Run("Download", func(t *testing.T) {
+		// Download a model
+		model, err := service.DownloadModel(context.Background(), "ggml-tiny.en-q5_1.bin", nil)
+		assert.NoError(err)
+		t.Log(model)
 	})
-	if !assert.NoError(err) {
-		t.SkipNow()
-	}
-	assert.NotNil(model)
 
-	// Load samples from a file
-	samples, err := LoadSamples(SAMPLES_DE)
-	if !assert.NoError(err) {
-		t.SkipNow()
-	}
+	t.Run("WithModelContext1", func(t *testing.T) {
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
 
-	// Transcribe a file
-	if err := service.WithModelContext(model, func(ctx *whisper.Context) error {
-		ctx.SetLanguage("de")
-		ctx.SetTranslate(false)
-		transcription, err := service.Transcribe(ctx, samples)
-		if err != nil {
-			return err
-		}
-		t.Log(transcription)
-		return nil
-	}); !assert.NoError(err) {
-		t.SkipNow()
-	}
+		// Get the model for the first time
+		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+			assert.NotNil(ctx)
+			return nil
+		}))
+	})
+
+	t.Run("WithModelContext2", func(t *testing.T) {
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
+
+		// Get the model for the first time
+		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+			assert.NotNil(ctx)
+			return nil
+		}))
+	})
+
+	t.Run("WithModelContext3", func(t *testing.T) {
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
+
+		// Get the model for the first time
+		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+			assert.NotNil(ctx)
+			return nil
+		}))
+	})
 }
 
-//////////////////////////////////////////////////////////////////////////////
-
-// Return samples as []float32
-func LoadSamples(path string) ([]float32, error) {
-	fh, err := os.Open(path)
-	if err != nil {
-		return nil, err
+func Test_whisper_004(t *testing.T) {
+	assert := assert.New(t)
+	service, err := whisper.New(t.TempDir(), whisper.OptMaxConcurrent(2))
+	if !assert.Nil(err) {
+		t.SkipNow()
 	}
-	defer fh.Close()
+	defer service.Close()
 
-	// Read samples
-	d := wav.NewDecoder(fh)
-	if buf, err := d.FullPCMBuffer(); err != nil {
-		return nil, err
-	} else {
-		return buf.AsFloat32Buffer().Data, nil
-	}
+	t.Run("Download", func(t *testing.T) {
+		// Download a model
+		model, err := service.DownloadModel(context.Background(), "ggml-tiny.en-q5_1.bin", nil)
+		assert.NoError(err)
+		t.Log(model)
+	})
+
+	t.Run("WithModelContext1", func(t *testing.T) {
+		t.Parallel()
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
+
+		// Get the model for the first time
+		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+			assert.NotNil(ctx)
+			return nil
+		}))
+	})
+
+	t.Run("WithModelContext2", func(t *testing.T) {
+		t.Parallel()
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
+
+		// Get the model for the first time
+		assert.NoError(service.WithModelContext(model, func(ctx *pool.Context) error {
+			assert.NotNil(ctx)
+			return nil
+		}))
+	})
+
+	t.Run("WithModelContext3", func(t *testing.T) {
+		t.Parallel()
+		model := service.GetModelById("ggml-tiny.en-q5_1.bin")
+		assert.NotNil(model)
+
+		// Get the model for the first time
+		err := service.WithModelContext(model, func(ctx *pool.Context) error {
+			assert.NotNil(ctx)
+			return nil
+		})
+		assert.ErrorIs(err, ErrChannelBlocked)
+	})
 }

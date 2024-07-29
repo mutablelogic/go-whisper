@@ -7,18 +7,17 @@ import (
 	"strings"
 	"testing"
 
+	// Packages
 	"github.com/go-audio/wav"
 	"github.com/mutablelogic/go-whisper/sys/whisper"
 	"github.com/stretchr/testify/assert"
 )
 
-const SAMPLE_JFK = "../../samples/jfk.wav"
-const SAMPLE_OLIVIERL = "../../samples/OlivierL.wav"
-const MODEL_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true"
-const MODEL_TINY = "ggml-tiny-q5_1.bin"
-const MODEL_MEDIUM = "ggml-medium-q5_0.bin" // approx 540MB
+const SAMPLE_EN = "../../samples/jfk.wav"
+const SAMPLE_FR = "../../samples/OlivierL.wav"
+const SAMPLE_DE = "../../samples/ge-podcast.wav"
 
-func Test_whisper_001(t *testing.T) {
+func Test_whisper_00(t *testing.T) {
 	assert := assert.New(t)
 
 	// Set logging
@@ -26,159 +25,418 @@ func Test_whisper_001(t *testing.T) {
 		t.Log(level, strings.TrimSpace(text))
 	})
 
-	ctx := whisper.Whisper_init("path")
-	assert.Nil(ctx)
-	ctx.Whisper_free()
-}
-
-func Test_whisper_002(t *testing.T) {
-	assert := assert.New(t)
-
-	// Set logging
-	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
-		t.Log(level, strings.TrimSpace(text))
-	})
-
-	// Create a client for downloading the model
-	client := whisper.NewClient(MODEL_URL)
-	assert.NotNil(client)
-
-	// Get a model - save to file
-	tmpfile, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
+	// Create a file for the model
+	w, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
-	defer tmpfile.Close()
+	defer w.Close()
 
-	// Get the model
-	t.Log("Downloading model", tmpfile.Name())
-	_, err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
-	assert.NoError(err)
+	// Read the model
+	client := whisper.NewClient(MODEL_URL)
+	if !assert.NotNil(client) {
+		t.SkipNow()
+	}
+	if _, err := client.Get(context.Background(), w, MODEL_TINY); !assert.NoError(err) {
+		t.SkipNow()
+	}
 
-	// Call full encode with callback
-	t.Run("FullSilence", func(t *testing.T) {
-		ctx := whisper.Whisper_init(tmpfile.Name())
+	t.Run("InitFromFileWithParams", func(t *testing.T) {
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), whisper.DefaultContextParams())
 		assert.NotNil(ctx)
-		defer ctx.Whisper_free()
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
 
-		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
-		assert.NotNil(params)
-		defer params.Close()
-
-		// 10 seconds of silence
-		samples := make([]float32, 10*whisper.SampleRate)
+	t.Run("InitFromMemoryWithParams", func(t *testing.T) {
+		data, err := os.ReadFile(w.Name())
 		if !assert.NoError(err) {
 			t.SkipNow()
 		}
 
-		err = ctx.Whisper_full(params, samples, nil, nil, nil)
-		assert.NoError(err)
+		ctx := whisper.Whisper_init_from_buffer_with_params(data, whisper.DefaultContextParams())
+		assert.NotNil(ctx)
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
 
-		// We should detect "en" in the "ggml-tiny-q5_1.bin" model
-		lang := ctx.Whisper_full_lang_id()
-		lang_str := whisper.Whisper_lang_str(lang)
-		assert.Equal(0, lang)
-		assert.Equal("en", lang_str)
+}
 
-		// Get segments - should be one
-		n := ctx.Whisper_full_n_segments()
-		assert.GreaterOrEqual(n, 1)
+func Test_whisper_01(t *testing.T) {
+	assert := assert.New(t)
 
-		// Get tokens from segments
-		for i := 0; i < n; i++ {
-			ntokens := ctx.Whisper_full_n_tokens(i)
-			assert.GreaterOrEqual(ntokens, 1)
-			text := ctx.Whisper_full_get_segment_text(i)
-			t.Logf("Segment %d: %q", i, text)
-			for j := 0; j < ntokens; j++ {
-				token := ctx.Whisper_full_get_token_data(i, j)
-				t.Logf("Token %d: %q", j, token)
+	// Set logging
+	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+		t.Log(level, strings.TrimSpace(text))
+	})
+
+	// Get maximum language id
+	max := whisper.Whisper_lang_max_id()
+	assert.Greater(max, 0)
+
+	for i := 0; i < max; i++ {
+		short := whisper.Whisper_lang_str(i)
+		long := whisper.Whisper_lang_str_full(i)
+		assert.NotEmpty(short)
+		assert.NotEmpty(long)
+		assert.Equal(i, whisper.Whisper_lang_id(short))
+		assert.Equal(i, whisper.Whisper_lang_id(long))
+		t.Logf("Language %d: %s (%s)", i, short, long)
+	}
+}
+
+func Test_whisper_02(t *testing.T) {
+	assert := assert.New(t)
+
+	// Set logging
+	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+		t.Log(level, strings.TrimSpace(text))
+	})
+
+	// Create a file for the model
+	w, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
+	if !assert.NoError(err) {
+		t.SkipNow()
+	}
+	defer w.Close()
+
+	// Read the model
+	client := whisper.NewClient(MODEL_URL)
+	if !assert.NotNil(client) {
+		t.SkipNow()
+	}
+	if _, err := client.Get(context.Background(), w, MODEL_TINY); !assert.NoError(err) {
+		t.SkipNow()
+	}
+
+	// Let's run three in parallel
+	params := whisper.DefaultContextParams()
+	params.SetUseGpu(false)
+
+	t.Run("Full_en", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_EN)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		t.Log(params)
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
+
+	t.Run("Full_fr", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_FR)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		t.Log(params)
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
+
+	t.Run("Full_de", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_DE)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		t.Log(params)
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
+
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+func Test_whisper_03(t *testing.T) {
+	assert := assert.New(t)
+
+	// Set logging
+	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+		t.Log(level, strings.TrimSpace(text))
+	})
+
+	// Create a file for the model
+	w, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
+	if !assert.NoError(err) {
+		t.SkipNow()
+	}
+	defer w.Close()
+
+	// Read the model
+	client := whisper.NewClient(MODEL_URL)
+	if !assert.NotNil(client) {
+		t.SkipNow()
+	}
+	if _, err := client.Get(context.Background(), w, MODEL_TINY); !assert.NoError(err) {
+		t.SkipNow()
+	}
+
+	// Let's run three in parallel
+	params := whisper.DefaultContextParams()
+	params.SetUseGpu(false)
+
+	t.Run("Progress_en", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_EN)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		params.SetProgressCallback(ctx, func(progress int) {
+			t.Logf("Progress: %d%%", progress)
+		})
+		params.SetAbortCallback(ctx, func() bool {
+			t.Logf("Abort Callback called")
+			return false
+		})
+		params.SetSegmentCallback(ctx, func(segment int) {
+			t.Logf("Segment %d", segment)
+		})
+
+		t.Log(params)
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
+
+	t.Run("Progress_fr", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_FR)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		params.SetProgressCallback(ctx, func(progress int) {
+			t.Logf("Progress: %d%%", progress)
+		})
+		params.SetAbortCallback(ctx, func() bool {
+			t.Logf("Abort Callback called")
+			return false
+		})
+		params.SetSegmentCallback(ctx, func(segment int) {
+			t.Logf("Segment %d", segment)
+		})
+
+		t.Log(params)
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
+
+	t.Run("Progress_de", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_DE)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		params.SetProgressCallback(ctx, func(progress int) {
+			t.Logf("Progress: %d%%", progress)
+		})
+		params.SetAbortCallback(ctx, func() bool {
+			t.Logf("Abort Callback called")
+			return false
+		})
+		params.SetSegmentCallback(ctx, func(segment int) {
+			t.Logf("Segment %d", segment)
+		})
+
+		t.Log(params)
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
+}
+
+func Test_whisper_04(t *testing.T) {
+	assert := assert.New(t)
+
+	// Set logging
+	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+		t.Log(level, strings.TrimSpace(text))
+	})
+
+	// Create a file for the model
+	w, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
+	if !assert.NoError(err) {
+		t.SkipNow()
+	}
+	defer w.Close()
+
+	// Read the model
+	client := whisper.NewClient(MODEL_URL)
+	if !assert.NotNil(client) {
+		t.SkipNow()
+	}
+	if _, err := client.Get(context.Background(), w, MODEL_TINY); !assert.NoError(err) {
+		t.SkipNow()
+	}
+
+	// Let's run three in parallel
+	params := whisper.DefaultContextParams()
+	params.SetUseGpu(false)
+
+	t.Run("Abort_fr", func(t *testing.T) {
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_FR)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Progress counter
+		var p int
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_BEAM_SEARCH)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		params.SetProgressCallback(ctx, func(progress int) {
+			t.Logf("Progress: %d%%", progress)
+			p = progress
+		})
+		params.SetAbortCallback(ctx, func() bool {
+			if p > 20 {
+				t.Logf("Aborting")
+				return true
 			}
-		}
-	})
+			return false
+		})
 
-	// Call full encode with JFK sample
-	t.Run("FullSampleJFK", func(t *testing.T) {
-		ctx := whisper.Whisper_init(tmpfile.Name())
-		assert.NotNil(ctx)
-		defer ctx.Whisper_free()
-
-		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
-		assert.NotNil(params)
-		defer params.Close()
-
-		// Get samples from WAV file
-		samples, err := LoadSample(SAMPLE_JFK)
-		if !assert.NoError(err) {
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.ErrorIs(err, whisper.ErrTranscriptionFailed) {
 			t.SkipNow()
 		}
 
-		err = ctx.Whisper_full(params, samples, nil, nil, nil)
-		assert.NoError(err)
-
-		// We should detect "en" in the "ggml-tiny-q5_1.bin" model
-		lang := ctx.Whisper_full_lang_id()
-		lang_str := whisper.Whisper_lang_str(lang)
-		assert.Equal(0, lang)
-		assert.Equal("en", lang_str)
-
-		// Get segments - should be one
-		n := ctx.Whisper_full_n_segments()
-		assert.GreaterOrEqual(n, 1)
-
-		// Get tokens from segments
-		for i := 0; i < n; i++ {
-			ntokens := ctx.Whisper_full_n_tokens(i)
-			assert.GreaterOrEqual(ntokens, 1)
-			text := strings.TrimSpace(ctx.Whisper_full_get_segment_text(i))
-			t.Logf("Segment %d: %q", i, text)
-			assert.Contains(strings.ToLower(text), "ask not what your country can do for you")
-			assert.Contains(strings.ToLower(text), "ask what you can do for your country")
-		}
-	})
-
-	// Call full encode with SAMPLE_OLIVIERL (fr)
-	t.Run("FullSampleOlivierL", func(t *testing.T) {
-		ctx := whisper.Whisper_init(tmpfile.Name())
-		assert.NotNil(ctx)
-		defer ctx.Whisper_free()
-
-		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
-		assert.NotNil(params)
-		defer params.Close()
-
-		params.SetLanguage(ctx.Whisper_lang_id("fr"))
-
-		// Get samples from WAV file
-		samples, err := LoadSample(SAMPLE_OLIVIERL)
-		if !assert.NoError(err) {
-			t.SkipNow()
-		}
-
-		err = ctx.Whisper_full(params, samples, nil, nil, nil)
-		assert.NoError(err)
-
-		// We should detect "en" in the "ggml-tiny-q5_1.bin" model
-		lang := ctx.Whisper_full_lang_id()
-		lang_str := whisper.Whisper_lang_str(lang)
-		assert.Equal(ctx.Whisper_lang_id("fr"), lang)
-		assert.Equal("fr", lang_str)
-
-		// Get segments - should be one
-		n := ctx.Whisper_full_n_segments()
-		assert.GreaterOrEqual(n, 1)
-
-		// Get tokens from segments
-		for i := 0; i < n; i++ {
-			ntokens := ctx.Whisper_full_n_tokens(i)
-			assert.GreaterOrEqual(ntokens, 1)
-			text := strings.TrimSpace(ctx.Whisper_full_get_segment_text(i))
-			t.Logf("Segment %d: %q", i, text)
-		}
+		// Free memory
+		whisper.Whisper_free(ctx)
 	})
 }
 
-func Test_whisper_003(t *testing.T) {
+func Test_whisper_05(t *testing.T) {
 	assert := assert.New(t)
 
 	// Set logging
@@ -186,86 +444,103 @@ func Test_whisper_003(t *testing.T) {
 		t.Log(level, strings.TrimSpace(text))
 	})
 
-	// Create a client for downloading the model
-	client := whisper.NewClient(MODEL_URL)
-	assert.NotNil(client)
-
-	// Get a model - save to file
-	tmpfile, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
+	// Create a file for the model
+	w, err := os.Create(filepath.Join(t.TempDir(), MODEL_TINY))
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
-	defer tmpfile.Close()
+	defer w.Close()
 
-	// Get the model
-	t.Log("Downloading model", tmpfile.Name())
-	_, err = client.Get(context.Background(), tmpfile, filepath.Base(tmpfile.Name()))
-	assert.NoError(err)
+	// Read the model
+	client := whisper.NewClient(MODEL_URL)
+	if !assert.NotNil(client) {
+		t.SkipNow()
+	}
+	if _, err := client.Get(context.Background(), w, MODEL_TINY); !assert.NoError(err) {
+		t.SkipNow()
+	}
 
-	// Call full encode with callbacks SAMPLE_OLIVIERL (fr)
-	t.Run("FullCallbackSampleOlivierL", func(t *testing.T) {
-		ctx := whisper.Whisper_init(tmpfile.Name())
-		assert.NotNil(ctx)
-		defer ctx.Whisper_free()
+	// Let's run three in parallel
+	params := whisper.DefaultContextParams()
+	params.SetUseGpu(false)
 
-		params := whisper.NewParams(whisper.SAMPLING_GREEDY)
-		assert.NotNil(params)
-		defer params.Close()
+	t.Run("Tokens_fr", func(t *testing.T) {
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
+		}
 
-		params.SetLanguage(ctx.Whisper_lang_id("fr"))
-
-		// Get samples from WAV file
-		samples, err := LoadSample(SAMPLE_OLIVIERL)
+		// Load samples
+		data, err := LoadSamples(SAMPLE_FR)
 		if !assert.NoError(err) {
 			t.SkipNow()
 		}
 
-		// Set callbacks
-		var calledBegin, calledSegment, calledProgress bool
-		encodeBegin := func() bool {
-			t.Log("Called encodeBegin")
-			calledBegin = true
-			return true
-		}
-		newSegment := func(s int) {
-			t.Logf("Called newSegment %d", s)
-			calledSegment = true
-		}
-		progress := func(p int) {
-			t.Logf("Called progress %d", p)
-			calledProgress = true
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_BEAM_SEARCH)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		params.SetTokenTimestamps(true)
+		params.SetDiarizeEnable(true)
+		params.SetSegmentCallback(ctx, func(new_segments int) {
+			num_segments := ctx.NumSegments()
+			for i := num_segments - new_segments; i < num_segments; i++ {
+				t.Logf("Segment %d: %v", i, ctx.SegmentText(i))
+			}
+		})
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
 		}
 
-		err = ctx.Whisper_full(params, samples, encodeBegin, newSegment, progress)
-		assert.NoError(err)
-		assert.True(calledBegin)
-		assert.True(calledSegment)
-		assert.True(calledProgress)
+		// Free memory
+		whisper.Whisper_free(ctx)
+	})
 
-		// We should detect "fr" in the "ggml-tiny-q5_1.bin" model
-		lang := ctx.Whisper_full_lang_id()
-		lang_str := whisper.Whisper_lang_str(lang)
-		assert.Equal(ctx.Whisper_lang_id("fr"), lang)
-		assert.Equal("fr", lang_str)
-
-		// Get segments - should be one
-		n := ctx.Whisper_full_n_segments()
-		assert.GreaterOrEqual(n, 1)
-
-		// Get tokens from segments
-		for i := 0; i < n; i++ {
-			ntokens := ctx.Whisper_full_n_tokens(i)
-			assert.GreaterOrEqual(ntokens, 1)
-			text := strings.TrimSpace(ctx.Whisper_full_get_segment_text(i))
-			t.Logf("Segment %d: %q", i, text)
+	t.Run("Tokens_de", func(t *testing.T) {
+		// Create a context
+		ctx := whisper.Whisper_init_from_file_with_params(w.Name(), params)
+		if !assert.NotNil(ctx) {
+			t.SkipNow()
 		}
+
+		// Load samples
+		data, err := LoadSamples(SAMPLE_DE)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Set parameters
+		params := whisper.DefaultFullParams(whisper.SAMPLING_BEAM_SEARCH)
+		params.SetLanguage("auto")
+		params.SetTranslate(false)
+		params.SetTokenTimestamps(true)
+		params.SetDiarizeEnable(true)
+		params.SetSegmentCallback(ctx, func(new_segments int) {
+			num_segments := ctx.NumSegments()
+			for i := num_segments - new_segments; i < num_segments; i++ {
+				t.Logf("Segment %d: %v", i, ctx.Segment(i))
+			}
+		})
+
+		// Run the model
+		err = whisper.Whisper_full(ctx, params, data)
+		if !assert.NoError(err) {
+			t.SkipNow()
+		}
+
+		// Free memory
+		whisper.Whisper_free(ctx)
 	})
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
 // Return samples as []float32
-func LoadSample(path string) ([]float32, error) {
+func LoadSamples(path string) ([]float32, error) {
 	fh, err := os.Open(path)
 	if err != nil {
 		return nil, err
