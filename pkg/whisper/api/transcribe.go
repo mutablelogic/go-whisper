@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	// Packages
-
-	"github.com/go-audio/wav"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
 	// Namespace imports
@@ -53,12 +53,6 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		return
 	}
 
-	// Check audio format - allow WAV or binary
-	if req.File.Header.Get("Content-Type") != "audio/wav" && req.File.Header.Get("Content-Type") != httprequest.ContentTypeBinary {
-		httpresponse.Error(w, http.StatusBadRequest, "unsupported audio format:", req.File.Header.Get("Content-Type"))
-		return
-	}
-
 	// Open file
 	f, err := req.File.Open()
 	if err != nil {
@@ -67,15 +61,14 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	}
 	defer f.Close()
 
-	// Read samples
-	buf, err := wav.NewDecoder(f).FullPCMBuffer()
+	// Create a segmenter - read segments of 5 min samples
+	segmenter, err := segmenter.New(f, 5*time.Minute, whisper.SampleRate)
 	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Get context for the model, perform transcription
-	var result *whisper.Transcription
 	if err := service.WithModel(model, func(task *task.Context) error {
 		// Check model
 		if translate && !task.CanTranslate() {
@@ -93,29 +86,23 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 				return err
 			}
 		}
-		// TODO Set prompt and temperature
-		/*
-			if req.Prompt != nil {
-				ctx.SetPrompt(*req.Prompt)
-			}
-			if req.Temperature != nil {
-				ctx.SetTemperature(*req.Temperature)
-			}
-		*/
-		// Perform the transcription, return any errors
-		return task.Transcribe(ctx, buf.AsFloat32Buffer().Data)
+
+		// TODO: Set temperature, etc
+
+		// Read samples and transcribe them
+		return segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
+			fmt.Println("audio segment", ts, len(buf))
+
+			// Perform the transcription, return any errors
+			return task.Transcribe(ctx, buf)
+		})
 	}); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, err.Error())
+		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Response - TODO srt, vtt, verbose_json
-	switch req.ResponseFormat() {
-	case "text":
-		httpresponse.Text(w, result.Text, http.StatusOK)
-	default:
-		httpresponse.JSON(w, result, http.StatusOK, 2)
-	}
+	var result whisper.Transcription
+	httpresponse.JSON(w, result, http.StatusOK, 2)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
