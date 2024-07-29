@@ -3,15 +3,18 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"net/http"
 
 	// Packages
-	"github.com/go-audio/wav"
+
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/task"
+
+	// Namespace imports
+	. "github.com/djthorpe/go-errors"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -42,8 +45,6 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		return
 	}
 
-	log.Println(req)
-
 	// Get the model
 	model := service.GetModelById(req.Model)
 	if model == nil {
@@ -66,17 +67,15 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	defer f.Close()
 
 	// Read samples
-	buf, err := wav.NewDecoder(f).FullPCMBuffer()
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+	//buf, err := wav.NewDecoder(f).FullPCMBuffer()
+	//if err != nil {
+	//	httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+	//	return
+	//}
 
 	// Get context for the model, perform transcription
 	var result *whisper.Transcription
-	if err := service.WithModelContext(model, func(ctx *whisper.Context) error {
-		var err error
-
+	if err := service.WithModel(model, func(ctx *task.Context) error {
 		// Set parameters for transcription & translation, default to english
 		ctx.SetTranslate(translate)
 		if req.Language != nil {
@@ -90,16 +89,17 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		}
 
 		// Set prompt and temperature
-		if req.Prompt != nil {
-			ctx.SetPrompt(*req.Prompt)
-		}
-		if req.Temperature != nil {
-			ctx.SetTemperature(*req.Temperature)
-		}
-
+		/*
+			if req.Prompt != nil {
+				ctx.SetPrompt(*req.Prompt)
+			}
+			if req.Temperature != nil {
+				ctx.SetTemperature(*req.Temperature)
+			}
+		*/
 		// Perform the transcription, return any errors
-		result, err = service.Transcribe(ctx, buf.AsFloat32Buffer().Data)
-		return err
+		//result, err = service.Transcribe(ctx, buf.AsFloat32Buffer().Data)
+		return ErrNotImplemented
 	}); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return

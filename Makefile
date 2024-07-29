@@ -13,23 +13,31 @@ DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
 ROOT_PATH := $(CURDIR)
 BUILD_DIR := build
+BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)" 
+
+# If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
+ifeq ($(GGML_CUDA),1)
+	BUILD_FLAGS += -tags cuda
+	CUDA_DOCKER_ARCH ?= all
+endif
 
 # Targets
 all: build server cli
 
+# Generate the pkg-config files
+generate: mkdir go-tidy
+	@echo "Generating pkg-config"
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} go generate ./sys/whisper
+
 # Make server
-server: mkdir go-tidy libwhisper libggml
+server: mkdir generate go-tidy libwhisper libggml
 	@echo "Building whisper-server"
-	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
-	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 ${GO} build -o ${BUILD_DIR}/whisper-server ./cmd/server
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper-server ./cmd/server
 
 # Make cli
-cli: mkdir go-tidy libwhisper libggml
+cli: mkdir generate go-tidy libwhisper libggml
 	@echo "Building whisper-cli"
-	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
-	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 ${GO} build -o ${BUILD_DIR}/whisper-cli ./cmd/cli
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper-cli ./cmd/cli
 
 # Build docker container
 docker: docker-dep submodule

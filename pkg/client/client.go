@@ -12,6 +12,7 @@ import (
 	"github.com/mutablelogic/go-client/pkg/multipart"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/model"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -37,9 +38,9 @@ func New(endpoint string, opts ...client.ClientOpt) (*Client, error) {
 ///////////////////////////////////////////////////////////////////////////////
 // MODELS
 
-func (c *Client) ListModels(ctx context.Context) ([]whisper.Model, error) {
+func (c *Client) ListModels(ctx context.Context) ([]model.Model, error) {
 	var models struct {
-		Models []whisper.Model `json:"models"`
+		Models []model.Model `json:"models"`
 	}
 	if err := c.DoWithContext(ctx, client.MethodGet, &models, client.OptPath("models")); err != nil {
 		return nil, err
@@ -52,12 +53,12 @@ func (c *Client) DeleteModel(ctx context.Context, model string) error {
 	return c.DoWithContext(ctx, client.MethodDelete, nil, client.OptPath("models", model))
 }
 
-func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status string, cur, total int64)) (whisper.Model, error) {
+func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status string, cur, total int64)) (model.Model, error) {
 	var req struct {
 		Path string `json:"path"`
 	}
 	type resp struct {
-		whisper.Model
+		model.Model
 		Status    string `json:"status"`
 		Total     int64  `json:"total,omitempty"`
 		Completed int64  `json:"completed,omitempty"`
@@ -74,7 +75,7 @@ func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status 
 
 	var r resp
 	if payload, err := client.NewJSONRequest(req); err != nil {
-		return whisper.Model{}, err
+		return model.Model{}, err
 	} else if err := c.DoWithContext(ctx, payload, &r,
 		client.OptPath("models"),
 		client.OptQuery(query),
@@ -86,7 +87,7 @@ func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status 
 			return nil
 		}),
 	); err != nil {
-		return whisper.Model{}, err
+		return model.Model{}, err
 	}
 
 	// Return success

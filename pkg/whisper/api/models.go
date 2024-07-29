@@ -13,14 +13,15 @@ import (
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/model"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
 type respModels struct {
-	Object string           `json:"object,omitempty"`
-	Models []*whisper.Model `json:"models"`
+	Object string         `json:"object,omitempty"`
+	Models []*model.Model `json:"models"`
 }
 
 type reqDownloadModel struct {
@@ -77,7 +78,7 @@ func DownloadModel(ctx context.Context, w http.ResponseWriter, r *http.Request, 
 
 	// Download the model
 	t := time.Now()
-	model, err := service.DownloadModel(ctx, req.Name(), req.DestPath(), func(curBytes, totalBytes uint64) {
+	model, err := service.DownloadModel(ctx, req.Name(), func(curBytes, totalBytes uint64) {
 		if time.Since(t) > time.Second && query.Stream {
 			t = time.Now()
 			json.NewEncoder(w).Encode(respDownloadModelStatus{
