@@ -50,6 +50,11 @@ func (s *Segmenter) Close() error {
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
+// TODO: segments are output through a callback, with the samples and a timestamp
+// TODO: we could do some basic silence and voice detection to segment to ensure
+// we don't overtax the CPU/GPU with silence and non-speech
+// TODO: We have hard-coded the sample format, sample rate and number of channels
+// here. We should make this configurable
 func (s *Segmenter) Decode(ctx context.Context) error {
 	mapFunc := func(stream int, params *ffmpeg.Par) (*ffmpeg.Par, error) {
 		if stream == s.reader.BestStream(media.AUDIO) {
