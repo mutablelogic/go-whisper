@@ -31,6 +31,17 @@ type models struct {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+// GLOBALS
+
+const (
+	// This is the extension of the model files
+	extModel = ".bin"
+
+	// This is where the model is downloaded from
+	modelUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true"
+)
+
+//////////////////////////////////////////////////////////////////////////////
 // STRINGIFY
 
 func (m *Model) String() string {

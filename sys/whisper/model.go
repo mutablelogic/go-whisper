@@ -83,7 +83,7 @@ func (c *client) Get(ctx context.Context, w io.Writer, path string) (int64, erro
 
 	// Unexpected status code
 	if response.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("unexpected status code: %d", response.StatusCode)
+		return 0, &HTTPError{response.StatusCode, response.Status}
 	}
 
 	// Set response header
