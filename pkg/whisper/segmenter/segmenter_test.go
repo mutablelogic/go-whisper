@@ -20,7 +20,7 @@ func Test_segmenter_001(t *testing.T) {
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
-	segmenter, err := segmenter.NewSegmenter(f, time.Second, 16000)
+	segmenter, err := segmenter.NewSegmenter(f, 200*time.Millisecond, 16000)
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
