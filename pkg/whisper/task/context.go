@@ -132,6 +132,11 @@ func (task *Context) CopyParams() {
 	task.params.SetLanguage("auto")
 }
 
+// Model is multilingual and can translate
+func (task *Context) CanTranslate() bool {
+	return whisper.Whisper_is_multilingual(task.whisper)
+}
+
 // Transcribe samples. The samples should be 16KHz float32 samples in
 // a single channel.
 // TODO: We need a low-latency streaming version of this function.

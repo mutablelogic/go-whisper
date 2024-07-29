@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	// Packages
-	"github.com/go-audio/wav"
+	wav "github.com/go-audio/wav"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 	assert "github.com/stretchr/testify/assert"
