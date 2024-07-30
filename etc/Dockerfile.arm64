@@ -7,10 +7,10 @@ ARG BASE_CUDA_RUN_CONTAINER=nvcr.io/nvidia/l4t-cuda:${CUDA_VERSION}-runtime
 # Setup build container
 FROM ${BASE_CUDA_DEV_CONTAINER} AS build
 ARG CUDA_DOCKER_ARCH=all
-RUN apt-get -y install software-properties-common \
+RUN apt-get -y update \
+ && apt-get -y install build-essential software-properties-common git libgomp1 curl pkg-config \
  && add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6 \
  && apt-get -y update \
- && apt-get -y install build-essential git libgomp1 curl pkg-config \
  && apt-get -y install libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
 
 # Install go
