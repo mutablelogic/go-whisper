@@ -29,6 +29,8 @@ I don't know what the windows one should be as I don't have a windows machine.
 
 ## Ubuntu 22.04
 
+Installing FFmpeg 6.1 libraries
+
 ```bash
 sudo add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6
 sudo apt-get update
