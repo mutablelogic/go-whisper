@@ -36,7 +36,7 @@ Required for decoding media files into audio which is suitable for audio detecti
 On Macintosh with homebrew, for example:
 
 ```bash
-brew install ffmpeg@6 chromaprint make
+brew install ffmpeg@6 make
 brew link ffmpeg@6
 ```
 
