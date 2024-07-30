@@ -128,3 +128,12 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 	// Return success
 	return nil
 }
+
+// Return the duration from the file or timestamp
+func (s *Segmenter) Duration() time.Duration {
+	if s.reader != nil {
+		return s.reader.Duration()
+	} else {
+		return s.ts + time.Duration(len(s.buf))*time.Second/time.Duration(s.sample_rate)
+	}
+}

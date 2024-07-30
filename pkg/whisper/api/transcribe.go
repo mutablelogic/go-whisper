@@ -13,6 +13,7 @@ import (
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/transcription"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -25,10 +26,16 @@ type reqTranscribe struct {
 	File        *multipart.FileHeader `json:"file"`
 	Model       string                `json:"model"`
 	Language    *string               `json:"language"`
-	Prompt      *string               `json:"prompt"`
-	ResponseFmt *string               `json:"response_format"`
 	Temperature *float32              `json:"temperature"`
+	SegmentSize *time.Duration        `json:"segment_size"`
+	ResponseFmt *string               `json:"response_format"`
 }
+
+const (
+	minSegmentSize     = 5 * time.Second
+	maxSegmentSize     = 10 * time.Minute
+	defaultSegmentSize = 5 * time.Minute
+)
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
@@ -61,14 +68,15 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	}
 	defer f.Close()
 
-	// Create a segmenter - read segments of 5 min samples
-	segmenter, err := segmenter.New(f, 5*time.Minute, whisper.SampleRate)
+	// Create a segmenter - read segments based on requested segment size
+	segmenter, err := segmenter.New(f, req.SegmentDur(), whisper.SampleRate)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Get context for the model, perform transcription
+	var result *transcription.Transcription
 	if err := service.WithModel(model, func(task *task.Context) error {
 		// Check model
 		if translate && !task.CanTranslate() {
@@ -90,18 +98,29 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		// TODO: Set temperature, etc
 
 		// Read samples and transcribe them
-		return segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
-			fmt.Println("audio segment", ts, len(buf))
-
+		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
-			return task.Transcribe(ctx, buf)
-		})
+			return task.Transcribe(ctx, ts, buf, func(segment *transcription.Segment) {
+				fmt.Println("TODO: ", segment)
+			})
+		}); err != nil {
+			return err
+		}
+
+		// End of transcription, get result
+		result = task.Result()
+
+		// Return success
+		return nil
 	}); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	var result whisper.Transcription
+	// Set duration
+	result.Duration = segmenter.Duration()
+
+	// Return transcription
 	httpresponse.JSON(w, result, http.StatusOK, 2)
 }
 
@@ -130,4 +149,17 @@ func (r reqTranscribe) ResponseFormat() string {
 		return "json"
 	}
 	return *r.ResponseFmt
+}
+
+func (r reqTranscribe) SegmentDur() time.Duration {
+	if r.SegmentSize == nil {
+		return defaultSegmentSize
+	}
+	if *r.SegmentSize < minSegmentSize {
+		return minSegmentSize
+	}
+	if *r.SegmentSize > maxSegmentSize {
+		return maxSegmentSize
+	}
+	return *r.SegmentSize
 }

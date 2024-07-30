@@ -19,36 +19,18 @@ extern void whisper_progress_cb_ex(struct whisper_context * ctx, struct whisper_
 extern void whisper_segment_cb_ex(struct whisper_context * ctx, struct whisper_state * state, int n, void * user_data);
 extern bool whisper_abort_cb_ex(void * user_data);
 
-// Set progress callback
-static void set_progress_cb(struct whisper_full_params* params, void* user_data) {
-	params->progress_callback_user_data = user_data;
-	if (user_data == NULL) {
-		params->progress_callback = NULL;
-	} else {
+// Set callbacks
+static void set_callbacks(struct whisper_full_params* params,  bool enabled) {
+	if (enabled) {
 		params->progress_callback = whisper_progress_cb_ex;
-	}
-}
-
-// Set abort callback
-static void set_abort_cb(struct whisper_full_params* params, void* user_data) {
-	params->abort_callback_user_data = user_data;
-	if (user_data == NULL) {
-		params->abort_callback = NULL;
-	} else {
 		params->abort_callback = whisper_abort_cb_ex;
-	}
-}
-
-// Set segment callback
-static void set_segment_cb(struct whisper_full_params* params, void* user_data) {
-	params->new_segment_callback_user_data = user_data;
-	if (user_data == NULL) {
-		params->new_segment_callback = NULL;
-	} else {
 		params->new_segment_callback = whisper_segment_cb_ex;
+	} else {
+		params->progress_callback = NULL;
+		params->abort_callback = NULL;
+		params->new_segment_callback = NULL;
 	}
 }
-
 */
 import "C"
 
@@ -78,16 +60,19 @@ const (
 )
 
 var (
-	progressCb = map[uintptr]ProgressCallback{}
-	segmentCb  = map[uintptr]SegmentCallback{}
-	abortCb    = map[uintptr]AbortCallback{}
+	// Map a uintptr context to a callback
+	progressCb = map[uint]ProgressCallback{}
+	segmentCb  = map[uint]SegmentCallback{}
+	abortCb    = map[uint]AbortCallback{}
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
 func DefaultFullParams(strategy SamplingStrategy) FullParams {
-	return (FullParams)(C.whisper_full_default_params((C.enum_whisper_sampling_strategy)(strategy)))
+	params := (FullParams)(C.whisper_full_default_params((C.enum_whisper_sampling_strategy)(strategy)))
+	C.set_callbacks((*C.struct_whisper_full_params)(&params), C.bool(true))
+	return params
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -269,58 +254,65 @@ func (c *FullParams) SetLanguage(v string) {
 }
 
 func (c *FullParams) SetProgressCallback(ctx *Context, cb ProgressCallback) {
-	k := uintptr(unsafe.Pointer(ctx))
+	key := cbkey(unsafe.Pointer(ctx))
 	if cb == nil {
-		C.set_progress_cb((*C.struct_whisper_full_params)(c), nil)
-		delete(progressCb, k)
+		c.progress_callback_user_data = nil
+		delete(progressCb, key)
 	} else {
-		C.set_progress_cb((*C.struct_whisper_full_params)(c), unsafe.Pointer(k))
-		progressCb[k] = cb
+		c.progress_callback_user_data = unsafe.Pointer(uintptr(key))
+		progressCb[key] = cb
 	}
 }
 
 func (c *FullParams) SetSegmentCallback(ctx *Context, cb SegmentCallback) {
-	k := uintptr(unsafe.Pointer(ctx))
+	key := cbkey(unsafe.Pointer(ctx))
 	if cb == nil {
-		C.set_segment_cb((*C.struct_whisper_full_params)(c), nil)
-		delete(segmentCb, k)
+		c.new_segment_callback_user_data = nil
+		delete(segmentCb, key)
 	} else {
-		C.set_segment_cb((*C.struct_whisper_full_params)(c), unsafe.Pointer(k))
-		segmentCb[k] = cb
+		c.new_segment_callback_user_data = unsafe.Pointer(uintptr(key))
+		segmentCb[key] = cb
 	}
 }
 
 func (c *FullParams) SetAbortCallback(ctx *Context, cb AbortCallback) {
-	k := uintptr(unsafe.Pointer(ctx))
+	key := cbkey(unsafe.Pointer(ctx))
 	if cb == nil {
-		C.set_abort_cb((*C.struct_whisper_full_params)(c), nil)
-		delete(abortCb, k)
+		c.abort_callback_user_data = nil
+		delete(abortCb, key)
 	} else {
-		C.set_abort_cb((*C.struct_whisper_full_params)(c), unsafe.Pointer(k))
-		abortCb[k] = cb
+		c.abort_callback_user_data = unsafe.Pointer(uintptr(key))
+		abortCb[key] = cb
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS
 
+func cbkey(ptr unsafe.Pointer) uint {
+	return uint(uintptr(ptr))
+}
+
 //export whisper_progress_cb_ex
 func whisper_progress_cb_ex(ctx *C.struct_whisper_context, state *C.struct_whisper_state, progress C.int, user_data unsafe.Pointer) {
-	if cb, ok := progressCb[uintptr(user_data)]; ok {
+	key := cbkey(user_data)
+	if cb, ok := progressCb[key]; ok {
 		cb(int(progress))
 	}
 }
 
 //export whisper_segment_cb_ex
 func whisper_segment_cb_ex(ctx *C.struct_whisper_context, state *C.struct_whisper_state, n C.int, user_data unsafe.Pointer) {
-	if cb, ok := segmentCb[uintptr(user_data)]; ok {
+	key := cbkey(user_data)
+	if cb, ok := segmentCb[key]; ok {
 		cb(int(n))
 	}
 }
 
 //export whisper_abort_cb_ex
 func whisper_abort_cb_ex(user_data unsafe.Pointer) C.bool {
-	if cb, ok := abortCb[uintptr(user_data)]; ok {
+	key := cbkey(user_data)
+	if cb, ok := abortCb[key]; ok {
 		return C.bool(cb())
 	}
 	return C.bool(false)

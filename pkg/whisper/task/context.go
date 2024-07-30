@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	// Packages
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
+	transcription "github.com/mutablelogic/go-whisper/pkg/whisper/transcription"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports
@@ -22,12 +24,19 @@ import (
 type Context struct {
 	sync.Mutex
 
+	// Model Id and whisper context
 	model   string
 	whisper *whisper.Context
 
 	// Parameters for the next transcription
 	params whisper.FullParams
+
+	// Collect the transcription
+	result *transcription.Transcription
 }
+
+// Callback for new segments during the transcription process
+type NewSegmentFunc func(*transcription.Segment)
 
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
@@ -84,7 +93,6 @@ func (ctx *Context) Close() error {
 
 	// Release resources
 	if ctx.whisper != nil {
-		fmt.Printf("Release model resources %v\n", ctx)
 		whisper.Whisper_free(ctx.whisper)
 	}
 	ctx.whisper = nil
@@ -97,7 +105,7 @@ func (ctx *Context) Close() error {
 //////////////////////////////////////////////////////////////////////////////
 // STRINGIFY
 
-func (ctx Context) MarshalJSON() ([]byte, error) {
+func (ctx *Context) MarshalJSON() ([]byte, error) {
 	type j struct {
 		Model   string             `json:"model"`
 		Params  whisper.FullParams `json:"params"`
@@ -110,7 +118,7 @@ func (ctx Context) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (ctx Context) String() string {
+func (ctx *Context) String() string {
 	data, err := json.MarshalIndent(ctx, "", "  ")
 	if err != nil {
 		return err.Error()
@@ -145,34 +153,47 @@ func (task *Context) CanTranslate() bool {
 
 // Transcribe samples. The samples should be 16KHz float32 samples in
 // a single channel.
-// TODO: We need a low-latency streaming version of this function.
-// TODO: We need a callback for segment progress.
-func (task *Context) Transcribe(ctx context.Context, samples []float32) error {
+func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples []float32, fn NewSegmentFunc) error {
 	// Set the 'abort' function
-	/*task.params.SetAbortCallback(task.whisper, func() bool {
+	task.params.SetAbortCallback(task.whisper, func() bool {
 		select {
 		case <-ctx.Done():
 			return true
 		default:
 			return false
 		}
-	})*/
+	})
 
-	// Set the 'progress' function
-	//task.params.SetProgressCallback(task.whisper, func(percent int) {
-	//	fmt.Printf("Progress: %v\n", percent)
-	//})
+	// Set the new segment function
+	if fn != nil {
+		task.params.SetSegmentCallback(task.whisper, func(new_segments int) {
+			num_segments := task.whisper.NumSegments()
+			for i := num_segments - new_segments; i < num_segments; i++ {
+				fn(transcription.NewSegment(ts, task.whisper.Segment(i)))
+			}
+		})
+	}
+
+	// TODO: Set the initial prompt tokens from any previous transcription call
 
 	// Perform the transcription
 	if err := whisper.Whisper_full(task.whisper, task.params, samples); err != nil {
-		return err
+		if ctx.Err() != nil {
+			return ctx.Err()
+		} else {
+			return err
+		}
 	}
 
-	// Get segments
-	for i := 0; i < task.whisper.NumSegments(); i++ {
-		segment := task.whisper.Segment(i)
-		fmt.Printf("Segment: %v\n", segment.Text)
+	// Remove the callbacks
+	task.params.SetAbortCallback(task.whisper, nil)
+	task.params.SetSegmentCallback(task.whisper, nil)
+
+	// Append the transcription
+	if task.result == nil {
+		task.result = transcription.New()
 	}
+	task.result.Append(task.whisper, ts)
 
 	// Return success
 	return nil
@@ -194,6 +215,12 @@ func (ctx *Context) SetLanguage(v string) error {
 	return nil
 }
 
+// Set translate to true or false
 func (ctx *Context) SetTranslate(v bool) {
 	ctx.params.SetTranslate(v)
+}
+
+// Return the transcription result
+func (ctx *Context) Result() *transcription.Transcription {
+	return ctx.result
 }

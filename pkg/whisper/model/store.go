@@ -309,6 +309,9 @@ func listModels(path, ext string) ([]*Model, error) {
 }
 
 func modelNameToId(name string) string {
+	// Lowercase the name, remove the extension
+	name = strings.TrimSuffix(strings.ToLower(name), filepath.Ext(name))
+
 	// We replace all non-alphanumeric characters with underscores
 	return strings.Map(func(r rune) rune {
 		if r >= 'a' && r <= 'z' {
