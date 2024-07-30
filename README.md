@@ -69,23 +69,26 @@ There's more information on the API [here](doc/API.md).
 
 ## Building
 
-The build dependencies are:
+If you are building a docker image, you just need Docker installed:
+
+* `DOCKER_REGISTRY=docker.io/user make docker` - builds a docker container with the
+  server binary, tagged to a specific registry
+
+If you want to build the server yourself for your specific combination of hardware,
+you can use the `Makefile` in the root directory and have the following dependencies
+met:
 
 * Go 1.22
 * C++ compiler
 * FFmpeg 6.1 libraries (see [here](doc/build.md) for more information)
 * For CUDA, you'll need the CUDA toolkit including the `nvcc` compiler
 
-If you want to build the server yourself for your specific combination of hardware,
-you can use the `Makefile` in the root directory. You'll need go 1.22, `make` and
-a C++ compiler to build this project. The following `Makefile` targets can be used:
+The following `Makefile` targets can be used:
 
 * `make server` - creates the server binary, and places it in the `build` directory. Should
   link to Metal on macOS
 * `GGML_CUDA=1 make server` - creates the server binary linked to CUDA, and places it
   in the `build` directory. Should work for amd64 and arm64 (Jetson) platforms
-* `DOCKER_REGISTRY=docker.io/user make docker` - builds a docker container with the 
-  server binary, tagged to a specific registry
 
 See all the other targets in the `Makefile` for more information.
 
