@@ -1,4 +1,4 @@
-package model
+package schema
 
 import (
 	"encoding/json"

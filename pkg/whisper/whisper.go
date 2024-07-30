@@ -11,6 +11,7 @@ import (
 	// Packages
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
 	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
@@ -127,12 +128,12 @@ func (w *Whisper) String() string {
 // PUBLIC METHODS
 
 // Return all models in the models directory
-func (w *Whisper) ListModels() []*model.Model {
+func (w *Whisper) ListModels() []*schema.Model {
 	return w.store.List()
 }
 
 // Get a model by its Id, returns nil if the model does not exist
-func (w *Whisper) GetModelById(id string) *model.Model {
+func (w *Whisper) GetModelById(id string) *schema.Model {
 	return w.store.ById(id)
 }
 
@@ -160,14 +161,14 @@ func (w *Whisper) DeleteModelById(id string) error {
 // Download a model by path, where the directory is the root of the model
 // within the models directory. The model is returned immediately if it
 // already exists in the store
-func (w *Whisper) DownloadModel(ctx context.Context, path string, fn func(curBytes, totalBytes uint64)) (*model.Model, error) {
+func (w *Whisper) DownloadModel(ctx context.Context, path string, fn func(curBytes, totalBytes uint64)) (*schema.Model, error) {
 	return w.store.Download(ctx, path, fn)
 }
 
 // Get a task for the specified model, which may load the model or
 // return an existing one. The context can then be used to run the Transcribe
 // function, and after the context is returned to the pool.
-func (w *Whisper) WithModel(model *model.Model, fn func(task *task.Context) error) error {
+func (w *Whisper) WithModel(model *schema.Model, fn func(task *task.Context) error) error {
 	if model == nil || fn == nil {
 		return ErrBadParameter
 	}

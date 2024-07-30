@@ -13,15 +13,15 @@ import (
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/model"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
 type respModels struct {
-	Object string         `json:"object,omitempty"`
-	Models []*model.Model `json:"models"`
+	Object string          `json:"object,omitempty"`
+	Models []*schema.Model `json:"models"`
 }
 
 type reqDownloadModel struct {

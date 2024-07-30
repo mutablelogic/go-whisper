@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	// Packages
-	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
+
+	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
 	// Namespace imports
@@ -78,7 +79,7 @@ func (m *ContextPool) String() string {
 // PUBLIC METHODS
 
 // Get a context from the pool, for a model
-func (m *ContextPool) Get(model *model.Model) (*task.Context, error) {
+func (m *ContextPool) Get(model *schema.Model) (*task.Context, error) {
 	// Check parameters
 	if model == nil {
 		return nil, ErrBadParameter
@@ -112,7 +113,7 @@ func (m *ContextPool) Put(ctx *task.Context) {
 }
 
 // Drain the pool of all contexts for a model, freeing resources
-func (m *ContextPool) Drain(model *model.Model) error {
+func (m *ContextPool) Drain(model *schema.Model) error {
 	fmt.Println("TODO: DRAIN", model.Id)
 	return nil
 }

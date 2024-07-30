@@ -9,8 +9,7 @@ import (
 	"time"
 
 	// Packages
-	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
-	transcription "github.com/mutablelogic/go-whisper/pkg/whisper/transcription"
+	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports
@@ -32,11 +31,11 @@ type Context struct {
 	params whisper.FullParams
 
 	// Collect the transcription
-	result *transcription.Transcription
+	result *schema.Transcription
 }
 
 // Callback for new segments during the transcription process
-type NewSegmentFunc func(*transcription.Segment)
+type NewSegmentFunc func(*schema.Segment)
 
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
@@ -47,7 +46,7 @@ func New() *Context {
 }
 
 // Init the context
-func (m *Context) Init(path string, model *model.Model, gpu int) error {
+func (m *Context) Init(path string, model *schema.Model, gpu int) error {
 	m.Lock()
 	defer m.Unlock()
 
@@ -130,7 +129,7 @@ func (ctx *Context) String() string {
 // PUBLIC METHODS
 
 // Context has a loaded model that matches the argument
-func (ctx *Context) Is(model *model.Model) bool {
+func (ctx *Context) Is(model *schema.Model) bool {
 	if ctx.model == "" {
 		return false
 	}
@@ -171,7 +170,7 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 		task.params.SetSegmentCallback(task.whisper, func(new_segments int) {
 			num_segments := task.whisper.NumSegments()
 			for i := num_segments - new_segments; i < num_segments; i++ {
-				fn(transcription.NewSegment(ts, task.whisper.Segment(i)))
+				fn(newSegment(ts, task.whisper.Segment(i)))
 			}
 		})
 	}
@@ -193,9 +192,9 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 
 	// Append the transcription
 	if task.result == nil {
-		task.result = transcription.New()
+		task.result = new(schema.Transcription)
 	}
-	task.result.Append(task.whisper, ts, segments)
+	task.appendResult(ts, segments)
 
 	// Return success
 	return nil
@@ -223,6 +222,23 @@ func (ctx *Context) SetTranslate(v bool) {
 }
 
 // Return the transcription result
-func (ctx *Context) Result() *transcription.Transcription {
+func (ctx *Context) Result() *schema.Transcription {
 	return ctx.result
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
+
+func (ctx *Context) appendResult(ts time.Duration, segments bool) {
+	// Append text
+	for i := 0; i < ctx.whisper.NumSegments(); i++ {
+		seg := ctx.whisper.Segment(i)
+		ctx.result.Text += seg.Text
+	}
+	if segments {
+		// Append segments
+		for i := 0; i < ctx.whisper.NumSegments(); i++ {
+			ctx.result.Segments = append(ctx.result.Segments, newSegment(ts, ctx.whisper.Segment(i)))
+		}
+	}
 }
