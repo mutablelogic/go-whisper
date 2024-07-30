@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	// Packages
-	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
 	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
+	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 )
 
 func Test_contextpool_001(t *testing.T) {
 	var pool = pool.NewContextPool(t.TempDir(), 2, 0)
 
-	model1, err := pool.Get(&model.Model{
+	model1, err := pool.Get(&schema.Model{
 		Id: "model1",
 	})
 	if err != nil {
@@ -22,7 +22,7 @@ func Test_contextpool_001(t *testing.T) {
 	}
 	t.Log("Got model1", model1)
 
-	model2, err := pool.Get(&model.Model{
+	model2, err := pool.Get(&schema.Model{
 		Id: "model2",
 	})
 	if err != nil {
@@ -35,7 +35,7 @@ func Test_contextpool_001(t *testing.T) {
 
 	pool.Put(model1)
 
-	model3, err := pool.Get(&model.Model{
+	model3, err := pool.Get(&schema.Model{
 		Id: "model1",
 	})
 	if err != nil {

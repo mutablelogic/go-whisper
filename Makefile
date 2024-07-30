@@ -9,10 +9,18 @@ OS ?= $(shell uname | tr A-Z a-z)
 VERSION ?= $(shell git describe --tags --always | sed 's/^v//')
 DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 
-# Set docker tag
+# Set docker tag, etc
 BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
 ROOT_PATH := $(CURDIR)
 BUILD_DIR := build
+
+# Build flags
+BUILD_MODULE := $(shell cat go.mod | head -1 | cut -d ' ' -f 2)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitSource=${BUILD_MODULE}
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitTag=$(shell git describe --tags --always)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitBranch=$(shell git name-rev HEAD --name-only --always)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitHash=$(shell git rev-parse HEAD)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GoBuildTime=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)" 
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
@@ -51,15 +59,11 @@ docker: docker-dep submodule
 		-f etc/Dockerfile.${ARCH} .
 
 # Test whisper bindings
-test: go-tidy libwhisper libggml
+test: generate libwhisper libggml
 	@echo "Running tests (sys)"
-	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
-	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 ${GO} test -v ./sys/whisper/...
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./sys/whisper/...
 	@echo "Running tests (pkg)"
-	@CGO_CFLAGS="-I${ROOT_PATH}/third_party/whisper.cpp/include -I${ROOT_PATH}/third_party/whisper.cpp/ggml/include" \
-	 CGO_LDFLAGS="-L${ROOT_PATH}/third_party/whisper.cpp" \
-	 ${GO} test -v ./pkg/whisper/...
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./pkg/whisper/...
 
 # Build whisper-static-library
 libwhisper: submodule

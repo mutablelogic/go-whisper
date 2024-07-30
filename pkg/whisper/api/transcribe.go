@@ -11,9 +11,9 @@ import (
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/task"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/transcription"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -76,7 +76,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	}
 
 	// Get context for the model, perform transcription
-	var result *transcription.Transcription
+	var result *schema.Transcription
 	if err := service.WithModel(model, func(task *task.Context) error {
 		// Check model
 		if translate && !task.CanTranslate() {
@@ -100,7 +100,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		// Read samples and transcribe them
 		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
-			return task.Transcribe(ctx, ts, buf, req.OutputSegments(), func(segment *transcription.Segment) {
+			return task.Transcribe(ctx, ts, buf, req.OutputSegments(), func(segment *schema.Segment) {
 				fmt.Println("TODO: ", segment)
 			})
 		}); err != nil {

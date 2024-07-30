@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	// Packages
-
-	"github.com/mutablelogic/go-whisper/sys/whisper"
+	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -29,7 +29,7 @@ type Store struct {
 	path, ext string
 
 	// list of all models
-	models []*Model
+	models []*schema.Model
 
 	// download models
 	client whisper.Client
@@ -101,7 +101,7 @@ func (s *Store) String() string {
 // PUBLIC METHODS
 
 // Return the models
-func (s *Store) List() []*Model {
+func (s *Store) List() []*schema.Model {
 	s.RLock()
 	defer s.RUnlock()
 	return s.models
@@ -120,7 +120,7 @@ func (s *Store) Rescan() error {
 }
 
 // Return a model by its Id
-func (s *Store) ById(name string) *Model {
+func (s *Store) ById(name string) *schema.Model {
 	s.RLock()
 	defer s.RUnlock()
 	name = modelNameToId(name)
@@ -133,7 +133,7 @@ func (s *Store) ById(name string) *Model {
 }
 
 // Return a model by path
-func (s *Store) ByPath(path string) *Model {
+func (s *Store) ByPath(path string) *schema.Model {
 	s.RLock()
 	defer s.RUnlock()
 	for _, model := range s.models {
@@ -177,7 +177,7 @@ func (s *Store) Delete(id string) error {
 //
 // A function can be provided to track the progress of the download. If no Content-Length is
 // provided by the server, the total bytes will be unknown and is set to zero.
-func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, totalBytes uint64)) (*Model, error) {
+func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, totalBytes uint64)) (*schema.Model, error) {
 	// abspath should be contained within the models directory
 	abspath := filepath.Clean(filepath.Join(s.path, path))
 	if !strings.HasPrefix(abspath, s.path) {
@@ -255,8 +255,8 @@ func toError(err error) error {
 	return err
 }
 
-func listModels(path, ext string) ([]*Model, error) {
-	result := make([]*Model, 0, 100)
+func listModels(path, ext string) ([]*schema.Model, error) {
+	result := make([]*schema.Model, 0, 100)
 
 	// Walk filesystem
 	return result, fs.WalkDir(os.DirFS(path), ".", func(path string, d fs.DirEntry, err error) error {
@@ -292,7 +292,7 @@ func listModels(path, ext string) ([]*Model, error) {
 		}
 
 		// Get model information
-		model := new(Model)
+		model := new(schema.Model)
 		model.Object = "model"
 		model.Path = path
 		model.Created = info.ModTime().Unix()
