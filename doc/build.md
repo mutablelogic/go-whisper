@@ -1,5 +1,6 @@
+# Notes on building
 
-# Package Config
+## Package Config
 
 libwhisper.pc
 
@@ -11,16 +12,6 @@ Description: Whisper is a C/C++ library for speech transcription, translation an
 Version: 0.0.0
 Cflags: -I${prefix}/third_party/whisper.cpp/include -I${prefix}/third_party/whisper.cpp/ggml/include
 Libs: -L${prefix}/third_party/whisper.cpp -lwhisper -lggml -lm -lstdc++
-```
-
-libwhisper-linux.pc
-
-```pkg-config
-prefix=/Users/djt/Projects/go-whisper/
-
-Name: libwhisper-linux
-Description: Whisper is a C/C++ library for speech transcription, translation and diarization.
-Version: 0.0.0
 ```
 
 libwhisper-darwin.pc
@@ -36,3 +27,10 @@ Libs: -framework Accelerate -framework Metal -framework Foundation -framework Co
 
 I don't know what the windows one should be as I don't have a windows machine.
 
+## Ubuntu 22.04
+
+```bash
+sudo add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6
+sudo apt-get update
+sudo apt-get install -y libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+```
