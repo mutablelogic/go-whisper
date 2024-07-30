@@ -27,12 +27,38 @@ Libs: -framework Accelerate -framework Metal -framework Foundation -framework Co
 
 I don't know what the windows one should be as I don't have a windows machine.
 
-## Ubuntu 22.04
+## FFmpeg
 
-Installing FFmpeg 6.1 libraries
+Required for decoding media files into audio which is suitable for audio detection and transcription.
+
+### MacOS
+
+On Macintosh with homebrew, for example:
 
 ```bash
-sudo add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6
-sudo apt-get update
-sudo apt-get install -y libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+brew install ffmpeg@6 chromaprint make
+brew link ffmpeg@6
+```
+
+### Debian
+
+If you're using Debian you may not be able to get the ffmpeg 6 unless you first of all add the debi-multimedia repository. You can do this by adding the following line to your /etc/apt/sources.list file:
+
+Add the repository as privileged user:
+
+```bash
+echo "deb https://www.deb-multimedia.org $(lsb_release -sc) main" >> /etc/apt/sources.list
+apt update -y -oAcquire::AllowInsecureRepositories=true
+apt install -y --force-yes deb-multimedia-keyring
+apt install -y libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+```
+
+### Ubuntu 22.04
+
+Easier with Ubuntu! Installing FFmpeg 6.1 libraries:
+
+```bash
+add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6
+apt-get update
+apt-get install -y libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
 ```
