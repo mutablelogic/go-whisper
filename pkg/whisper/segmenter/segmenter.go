@@ -24,14 +24,14 @@ type Segmenter struct {
 
 // SegmentFunc is a callback function which is called when a segment is ready
 // to be processed. The first argument is the timestamp of the segment.
-type SegmentFunc func(time.Duration, []float32)
+type SegmentFunc func(time.Duration, []float32) error
 
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
 // Create a new segmenter for "NumSamples" with a reader r
 // If NumSamples is zero then no segmenting is performed
-func NewSegmenter(r io.Reader, dur time.Duration, sample_rate int) (*Segmenter, error) {
+func New(r io.Reader, dur time.Duration, sample_rate int) (*Segmenter, error) {
 	segmenter := new(Segmenter)
 
 	// Check arguments
@@ -43,8 +43,8 @@ func NewSegmenter(r io.Reader, dur time.Duration, sample_rate int) (*Segmenter, 
 
 	// Sample buffer is duration * sample rate
 	if dur > 0 {
-		segmenter.n = int(dur.Seconds()) * sample_rate
-		segmenter.buf = make([]float32, 0, int(dur.Seconds())*sample_rate)
+		segmenter.n = int(dur.Seconds() * float64(sample_rate))
+		segmenter.buf = make([]float32, 0, segmenter.n)
 	}
 
 	// Open the file
@@ -105,11 +105,13 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 
 		// n != 0 and len(buf) >= n we have a segment to process
 		if s.n != 0 && len(s.buf) >= s.n {
-			fn(s.ts, s.buf)
+			if err := fn(s.ts, s.buf); err != nil {
+				return err
+			}
+			// Increment the timestamp
+			s.ts += time.Duration(len(s.buf)) * time.Second / time.Duration(s.sample_rate)
 			// Clear the buffer
 			s.buf = s.buf[:0]
-			// Increment the timestamp
-			s.ts += time.Duration(float64(s.n)/float64(s.sample_rate)) * time.Second
 		}
 
 		// Continue processing
@@ -125,4 +127,13 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 
 	// Return success
 	return nil
+}
+
+// Return the duration from the file or timestamp
+func (s *Segmenter) Duration() time.Duration {
+	if s.reader != nil {
+		return s.reader.Duration()
+	} else {
+		return s.ts + time.Duration(len(s.buf))*time.Second/time.Duration(s.sample_rate)
+	}
 }

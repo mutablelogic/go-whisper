@@ -11,8 +11,8 @@ import (
 	"github.com/mutablelogic/go-client"
 	"github.com/mutablelogic/go-client/pkg/multipart"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
-	"github.com/mutablelogic/go-whisper/pkg/whisper"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/model"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/transcription"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -94,13 +94,13 @@ func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status 
 	return r.Model, nil
 }
 
-func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opt ...Opt) (*whisper.Transcription, error) {
+func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opt ...Opt) (*transcription.Transcription, error) {
 	var request struct {
 		File  multipart.File `json:"file"`
 		Model string         `json:"model"`
 		opts
 	}
-	var response whisper.Transcription
+	var response transcription.Transcription
 
 	// Get the name from the io.Reader
 	name := ""
@@ -131,13 +131,13 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opt 
 	return &response, nil
 }
 
-func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opt ...Opt) (*whisper.Transcription, error) {
+func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opt ...Opt) (*transcription.Transcription, error) {
 	var request struct {
 		File  multipart.File `json:"file"`
 		Model string         `json:"model"`
 		opts
 	}
-	var response whisper.Transcription
+	var response transcription.Transcription
 
 	// Get the name from the io.Reader
 	name := ""

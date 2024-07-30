@@ -20,14 +20,15 @@ func Test_segmenter_001(t *testing.T) {
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
-	segmenter, err := segmenter.NewSegmenter(f, time.Second, 16000)
+	segmenter, err := segmenter.New(f, 200*time.Millisecond, 16000)
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
 	defer segmenter.Close()
 
-	assert.NoError(segmenter.Decode(context.Background(), func(ts time.Duration, buf []float32) {
+	assert.NoError(segmenter.Decode(context.Background(), func(ts time.Duration, buf []float32) error {
 		t.Log(ts, len(buf))
+		return nil
 	}))
 }
 
@@ -40,13 +41,14 @@ func Test_segmenter_002(t *testing.T) {
 	}
 
 	// No segmentation, just output the audio
-	segmenter, err := segmenter.NewSegmenter(f, 0, 16000)
+	segmenter, err := segmenter.New(f, 0, 16000)
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
 	defer segmenter.Close()
 
-	assert.NoError(segmenter.Decode(context.Background(), func(ts time.Duration, buf []float32) {
+	assert.NoError(segmenter.Decode(context.Background(), func(ts time.Duration, buf []float32) error {
 		t.Log(ts, len(buf))
+		return nil
 	}))
 }

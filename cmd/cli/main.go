@@ -11,7 +11,7 @@ import (
 	tablewriter "github.com/djthorpe/go-tablewriter"
 	client "github.com/mutablelogic/go-client"
 	ctx "github.com/mutablelogic/go-server/pkg/context"
-	api "github.com/mutablelogic/go-whisper/pkg/client"
+	api "github.com/mutablelogic/go-whisper/pkg/whisper/client"
 )
 
 type Globals struct {

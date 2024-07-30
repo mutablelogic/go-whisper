@@ -36,6 +36,9 @@ const (
 
 	// This is where the model is downloaded from
 	defaultModelUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/?download=true"
+
+	// Sample Rate
+	SampleRate = whisper.SampleRate
 )
 
 //////////////////////////////////////////////////////////////////////////////

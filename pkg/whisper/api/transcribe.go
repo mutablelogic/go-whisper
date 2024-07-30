@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	// Packages
-
-	"github.com/go-audio/wav"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	"github.com/mutablelogic/go-whisper/pkg/whisper/transcription"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -25,10 +26,16 @@ type reqTranscribe struct {
 	File        *multipart.FileHeader `json:"file"`
 	Model       string                `json:"model"`
 	Language    *string               `json:"language"`
-	Prompt      *string               `json:"prompt"`
-	ResponseFmt *string               `json:"response_format"`
 	Temperature *float32              `json:"temperature"`
+	SegmentSize *time.Duration        `json:"segment_size"`
+	ResponseFmt *string               `json:"response_format"`
 }
+
+const (
+	minSegmentSize     = 5 * time.Second
+	maxSegmentSize     = 10 * time.Minute
+	defaultSegmentSize = 5 * time.Minute
+)
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
@@ -53,12 +60,6 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		return
 	}
 
-	// Check audio format - allow WAV or binary
-	if req.File.Header.Get("Content-Type") != "audio/wav" && req.File.Header.Get("Content-Type") != httprequest.ContentTypeBinary {
-		httpresponse.Error(w, http.StatusBadRequest, "unsupported audio format:", req.File.Header.Get("Content-Type"))
-		return
-	}
-
 	// Open file
 	f, err := req.File.Open()
 	if err != nil {
@@ -67,15 +68,15 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	}
 	defer f.Close()
 
-	// Read samples
-	buf, err := wav.NewDecoder(f).FullPCMBuffer()
+	// Create a segmenter - read segments based on requested segment size
+	segmenter, err := segmenter.New(f, req.SegmentDur(), whisper.SampleRate)
 	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Get context for the model, perform transcription
-	var result *whisper.Transcription
+	var result *transcription.Transcription
 	if err := service.WithModel(model, func(task *task.Context) error {
 		// Check model
 		if translate && !task.CanTranslate() {
@@ -93,29 +94,38 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 				return err
 			}
 		}
-		// TODO Set prompt and temperature
-		/*
-			if req.Prompt != nil {
-				ctx.SetPrompt(*req.Prompt)
-			}
-			if req.Temperature != nil {
-				ctx.SetTemperature(*req.Temperature)
-			}
-		*/
-		// Perform the transcription, return any errors
-		return task.Transcribe(ctx, buf.AsFloat32Buffer().Data)
+
+		// TODO: Set temperature, etc
+
+		// Read samples and transcribe them
+		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
+			// Perform the transcription, return any errors
+			return task.Transcribe(ctx, ts, buf, req.OutputSegments(), func(segment *transcription.Segment) {
+				fmt.Println("TODO: ", segment)
+			})
+		}); err != nil {
+			return err
+		}
+
+		// End of transcription, get result
+		result = task.Result()
+
+		// Return success
+		return nil
 	}); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, err.Error())
+		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Response - TODO srt, vtt, verbose_json
-	switch req.ResponseFormat() {
-	case "text":
-		httpresponse.Text(w, result.Text, http.StatusOK)
-	default:
-		httpresponse.JSON(w, result, http.StatusOK, 2)
+	// Set task, duration
+	result.Task = "transcribe"
+	if translate {
+		result.Task = "translate"
 	}
+	result.Duration = segmenter.Duration()
+
+	// Return transcription
+	httpresponse.JSON(w, result, http.StatusOK, 2)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -143,4 +153,27 @@ func (r reqTranscribe) ResponseFormat() string {
 		return "json"
 	}
 	return *r.ResponseFmt
+}
+
+func (r reqTranscribe) OutputSegments() bool {
+	// We want to output segments if the response format is  "srt", "verbose_json", "vtt"
+	switch r.ResponseFormat() {
+	case "srt", "verbose_json", "vtt":
+		return true
+	default:
+		return false
+	}
+}
+
+func (r reqTranscribe) SegmentDur() time.Duration {
+	if r.SegmentSize == nil {
+		return defaultSegmentSize
+	}
+	if *r.SegmentSize < minSegmentSize {
+		return minSegmentSize
+	}
+	if *r.SegmentSize > maxSegmentSize {
+		return maxSegmentSize
+	}
+	return *r.SegmentSize
 }
