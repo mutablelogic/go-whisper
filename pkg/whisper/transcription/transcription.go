@@ -2,6 +2,7 @@ package transcription
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/mutablelogic/go-whisper/sys/whisper"
@@ -15,7 +16,7 @@ type Transcription struct {
 	Language string        `json:"language,omitempty" writer:",width:8"`
 	Duration time.Duration `json:"duration,omitempty" writer:",width:8,right"`
 	Text     string        `json:"text" writer:",width:60,wrap"`
-	Segments []Segment     `json:"segments,omitempty" writer:",width:40,wrap"`
+	Segments []*Segment    `json:"segments,omitempty" writer:",width:40,wrap"`
 }
 
 type Segment struct {
@@ -23,7 +24,7 @@ type Segment struct {
 	Start       time.Duration `json:"start"`
 	End         time.Duration `json:"end"`
 	Text        string        `json:"text"`
-	SpeakerTurn bool          `json:"speaker_turn,omitempty"`
+	SpeakerTurn bool          `json:"speaker_turn,omitempty"` // TODO
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -67,15 +68,21 @@ func (s *Segment) String() string {
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-// Append a transcription to the current transcription, with the offset timestamp
-func (t *Transcription) Append(ctx *whisper.Context, ts time.Duration) {
-	// Append the segment text
+// Append a transcription to the current transcription, with an offset timestamp
+func (t *Transcription) Append(ctx *whisper.Context, ts time.Duration, segments bool) {
+	// Append text
 	for i := 0; i < ctx.NumSegments(); i++ {
 		seg := ctx.Segment(i)
 		if t.Text == "" {
-			t.Text = seg.Text
+			t.Text = strings.TrimSpace(seg.Text)
 		} else {
-			t.Text += " " + seg.Text
+			t.Text += " " + strings.TrimSpace(seg.Text)
+		}
+	}
+	if segments {
+		// Append segments
+		for i := 0; i < ctx.NumSegments(); i++ {
+			t.Segments = append(t.Segments, NewSegment(ts, ctx.Segment(i)))
 		}
 	}
 }

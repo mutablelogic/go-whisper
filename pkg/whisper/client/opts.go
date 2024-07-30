@@ -1,10 +1,12 @@
 package client
 
+import "time"
+
 // Request options
 type opts struct {
-	Language    string  `json:"language,omitempty"`
-	Prompt      string  `json:"prompt,omitempty"`
-	Temperature float32 `json:"temperature,omitempty"`
+	Language    string        `json:"language,omitempty"`
+	SegmentSize time.Duration `json:"segment_size,omitempty"`
+	ResponseFmt string        `json:"response_format,omitempty"`
 }
 
 type Opt func(*opts) error
@@ -19,16 +21,16 @@ func OptLanguage(language string) Opt {
 	}
 }
 
-func OptPrompt(prompt string) Opt {
+func OptSegmentSize(v time.Duration) Opt {
 	return func(o *opts) error {
-		o.Prompt = prompt
+		o.SegmentSize = v
 		return nil
 	}
 }
 
-func OptTemperature(t float32) Opt {
+func OptResponseFormat(v string) Opt {
 	return func(o *opts) error {
-		o.Temperature = t
+		o.ResponseFmt = v
 		return nil
 	}
 }

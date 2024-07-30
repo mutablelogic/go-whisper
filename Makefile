@@ -35,7 +35,7 @@ server: mkdir generate go-tidy libwhisper libggml
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper-server ./cmd/server
 
 # Make cli
-cli: mkdir generate go-tidy libwhisper libggml
+cli: mkdir generate go-tidy
 	@echo "Building whisper-cli"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper-cli ./cmd/cli
 

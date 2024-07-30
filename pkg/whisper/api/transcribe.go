@@ -100,7 +100,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		// Read samples and transcribe them
 		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
-			return task.Transcribe(ctx, ts, buf, func(segment *transcription.Segment) {
+			return task.Transcribe(ctx, ts, buf, req.OutputSegments(), func(segment *transcription.Segment) {
 				fmt.Println("TODO: ", segment)
 			})
 		}); err != nil {
@@ -117,7 +117,11 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		return
 	}
 
-	// Set duration
+	// Set task, duration
+	result.Task = "transcribe"
+	if translate {
+		result.Task = "translate"
+	}
 	result.Duration = segmenter.Duration()
 
 	// Return transcription
@@ -149,6 +153,16 @@ func (r reqTranscribe) ResponseFormat() string {
 		return "json"
 	}
 	return *r.ResponseFmt
+}
+
+func (r reqTranscribe) OutputSegments() bool {
+	// We want to output segments if the response format is  "srt", "verbose_json", "vtt"
+	switch r.ResponseFormat() {
+	case "srt", "verbose_json", "vtt":
+		return true
+	default:
+		return false
+	}
 }
 
 func (r reqTranscribe) SegmentDur() time.Duration {

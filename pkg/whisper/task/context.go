@@ -140,10 +140,11 @@ func (ctx *Context) Is(model *model.Model) bool {
 	return ctx.model == model.Id
 }
 
-// Copy task parameters from the default
+// Reset task context for re-use
 func (task *Context) CopyParams() {
 	task.params = whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
 	task.params.SetLanguage("auto")
+	task.result = nil
 }
 
 // Model is multilingual and can translate
@@ -152,8 +153,9 @@ func (task *Context) CanTranslate() bool {
 }
 
 // Transcribe samples. The samples should be 16KHz float32 samples in
-// a single channel.
-func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples []float32, fn NewSegmentFunc) error {
+// a single channel. Appends the transcription to the result, and includes
+// segment data if segments is true.
+func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples []float32, segments bool, fn NewSegmentFunc) error {
 	// Set the 'abort' function
 	task.params.SetAbortCallback(task.whisper, func() bool {
 		select {
@@ -193,7 +195,7 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 	if task.result == nil {
 		task.result = transcription.New()
 	}
-	task.result.Append(task.whisper, ts)
+	task.result.Append(task.whisper, ts, segments)
 
 	// Return success
 	return nil
