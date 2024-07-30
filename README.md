@@ -56,13 +56,13 @@ curl -X DELETE localhost:8080/v1/models/ggml-tiny.en-q8_0
 To transcribe a media file into it's original language, you can use the following command:
 
 ```bash
-curl -F "model=ggml-tiny.en-q8_0" -F "file=@samples/jfk.wav" localhost:8080/v1/audio/transcriptions
+curl -F "model=ggml-tiny.en-q8_0.bin" -F "file=@samples/jfk.wav" localhost:8080/v1/audio/transcriptions
 ```
 
 To translate a media file into a different language, you can use the following command:
 
 ```bash
-curl -F "model=ggml-tiny.en-q8_0" -F "file=@samples/de-podcast.wav" -F "language=en" localhost:8080/v1/audio/transcriptions
+curl -F "model=ggml-tiny.en-q8_0.bin" -F "file=@samples/de-podcast.wav" -F "language=en" localhost:8080/v1/audio/transcriptions
 ```
 
 There's more information on the API [here](doc/API.md).
