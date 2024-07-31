@@ -170,7 +170,8 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 		task.params.SetSegmentCallback(task.whisper, func(new_segments int) {
 			num_segments := task.whisper.NumSegments()
 			for i := num_segments - new_segments; i < num_segments; i++ {
-				fn(newSegment(ts, task.whisper.Segment(i)))
+				// TODO: fix the segment offset
+				fn(newSegment(ts, 0, task.whisper.Segment(i)))
 			}
 		})
 	}
