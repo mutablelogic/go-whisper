@@ -11,10 +11,10 @@ import (
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-func newSegment(ts time.Duration, seg *whisper.Segment) *schema.Segment {
+func newSegment(ts time.Duration, offset int32, seg *whisper.Segment) *schema.Segment {
 	// Dumb copy function
 	return &schema.Segment{
-		Id:          seg.Id,
+		Id:          offset + seg.Id,
 		Text:        seg.Text,
 		Start:       schema.Timestamp(seg.T0 + ts),
 		End:         schema.Timestamp(seg.T1 + ts),
