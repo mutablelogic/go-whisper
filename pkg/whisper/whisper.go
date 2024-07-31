@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	// Packages
+	"github.com/mutablelogic/go-media/pkg/ffmpeg"
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
 	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
@@ -79,6 +80,9 @@ func New(path string, opt ...Opt) (*Whisper, error) {
 				return
 			}
 			o.logfn(fmt.Sprintf("[%s] %s", level, strings.TrimSpace(text)))
+		})
+		ffmpeg.SetLogging(o.debug, func(text string) {
+			o.logfn(text)
 		})
 	}
 
