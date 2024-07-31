@@ -2,18 +2,17 @@ package schema
 
 import (
 	"encoding/json"
-	"time"
 )
 
 //////////////////////////////////////////////////////////////////////////////
 // TYPES
 
 type Segment struct {
-	Id          int32         `json:"id"`
-	Start       time.Duration `json:"start"`
-	End         time.Duration `json:"end"`
-	Text        string        `json:"text"`
-	SpeakerTurn bool          `json:"speaker_turn,omitempty"` // TODO
+	Id          int32     `json:"id"`
+	Start       Timestamp `json:"start"`
+	End         Timestamp `json:"end"`
+	Text        string    `json:"text"`
+	SpeakerTurn bool      `json:"speaker_turn,omitempty"` // TODO
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -143,7 +143,7 @@ func (ctx *Context) Is(model *schema.Model) bool {
 func (task *Context) CopyParams() {
 	task.params = whisper.DefaultFullParams(whisper.SAMPLING_GREEDY)
 	task.params.SetLanguage("auto")
-	task.result = nil
+	task.result = new(schema.Transcription)
 }
 
 // Model is multilingual and can translate
@@ -191,9 +191,6 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 	task.params.SetSegmentCallback(task.whisper, nil)
 
 	// Append the transcription
-	if task.result == nil {
-		task.result = new(schema.Transcription)
-	}
 	task.appendResult(ts, segments)
 
 	// Return success
@@ -214,6 +211,10 @@ func (ctx *Context) SetLanguage(v string) error {
 	}
 	ctx.params.SetLanguage(v)
 	return nil
+}
+
+func (ctx *Context) Language() string {
+	return ctx.params.Language()
 }
 
 // Set translate to true or false

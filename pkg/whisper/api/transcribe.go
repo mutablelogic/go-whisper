@@ -31,6 +31,10 @@ type reqTranscribe struct {
 	ResponseFmt *string               `json:"response_format"`
 }
 
+type queryTranscribe struct {
+	Stream bool `json:"stream"`
+}
+
 const (
 	minSegmentSize     = 5 * time.Second
 	maxSegmentSize     = 10 * time.Minute
@@ -42,6 +46,11 @@ const (
 
 func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.ResponseWriter, r *http.Request, translate bool) {
 	var req reqTranscribe
+	var query queryTranscribe
+	if err := httprequest.Query(&query, r.URL.Query()); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err := httprequest.Body(&req, r); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
@@ -75,6 +84,16 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		return
 	}
 
+	// Create a text stream
+	var stream *httpresponse.TextStream
+	if query.Stream {
+		if stream = httpresponse.NewTextStream(w); stream == nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "Cannot create text stream")
+			return
+		}
+		defer stream.Close()
+	}
+
 	// Get context for the model, perform transcription
 	var result *schema.Transcription
 	if err := service.WithModel(model, func(task *task.Context) error {
@@ -97,35 +116,52 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 
 		// TODO: Set temperature, etc
 
+		// Create response
+		result = task.Result()
+		result.Task = "transcribe"
+		if translate {
+			result.Task = "translate"
+		}
+		result.Duration = schema.Timestamp(segmenter.Duration())
+		result.Language = task.Language()
+
+		// Output the header
+		if stream != nil {
+			stream.Write("task", result)
+		}
+
 		// Read samples and transcribe them
 		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
-			return task.Transcribe(ctx, ts, buf, req.OutputSegments(), func(segment *schema.Segment) {
-				fmt.Println("TODO: ", segment)
+			return task.Transcribe(ctx, ts, buf, req.OutputSegments() || stream != nil, func(segment *schema.Segment) {
+				if stream != nil {
+					stream.Write("segment", segment)
+				}
 			})
 		}); err != nil {
 			return err
 		}
 
-		// End of transcription, get result
-		result = task.Result()
+		// Set the language
+		result.Language = task.Language()
 
 		// Return success
 		return nil
 	}); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		if stream != nil {
+			stream.Write("error", err.Error())
+		} else {
+			httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
-	// Set task, duration
-	result.Task = "transcribe"
-	if translate {
-		result.Task = "translate"
+	// Return transcription if not streaming
+	if stream == nil {
+		httpresponse.JSON(w, result, http.StatusOK, 2)
+	} else {
+		stream.Write("ok")
 	}
-	result.Duration = segmenter.Duration()
-
-	// Return transcription
-	httpresponse.JSON(w, result, http.StatusOK, 2)
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -154,7 +154,7 @@ func tsToDuration(ts C.int64_t) time.Duration {
 	if ts == -1 {
 		return 0
 	}
-	return time.Duration(ts) * time.Millisecond
+	return time.Duration(ts) * time.Millisecond * 10
 }
 
 // return a token type from a token

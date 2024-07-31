@@ -16,8 +16,8 @@ func newSegment(ts time.Duration, seg *whisper.Segment) *schema.Segment {
 	return &schema.Segment{
 		Id:          seg.Id,
 		Text:        seg.Text,
-		Start:       seg.T0 + ts,
-		End:         seg.T1 + ts,
+		Start:       schema.Timestamp(seg.T0 + ts),
+		End:         schema.Timestamp(seg.T1 + ts),
 		SpeakerTurn: seg.SpeakerTurn,
 	}
 }
