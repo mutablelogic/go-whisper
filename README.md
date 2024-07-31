@@ -38,7 +38,7 @@ available at `http://localhost:8080/v1` and it generally conforms to the
 In order to download a model, you can use the following command (for example):
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"Path" : "ggml-tiny.en-q8_0.bin" }' localhost:8080/v1/models  
+curl -X POST -H "Content-Type: application/json" -d '{"Path" : "ggml-medium-q5_0.bin" }' localhost:8080/v1/models  
 ```
 
 To list the models available, you can use the following command:
@@ -50,19 +50,19 @@ curl -X GET localhost:8080/v1/models
 To delete a model, you can use the following command:
 
 ```bash
-curl -X DELETE localhost:8080/v1/models/ggml-tiny.en-q8_0
+curl -X DELETE localhost:8080/v1/models/ggml-medium-q5_0
 ```
 
 To transcribe a media file into it's original language, you can use the following command:
 
 ```bash
-curl -F "model=ggml-tiny.en-q8_0" -F "file=@samples/jfk.wav" localhost:8080/v1/audio/transcriptions
+curl -F model=ggml-medium-q5_0 -F file=@samples/jfk.wav localhost:8080/v1/audio/transcriptions
 ```
 
 To translate a media file into a different language, you can use the following command:
 
 ```bash
-curl -F "model=ggml-tiny.en-q8_0" -F "file=@samples/de-podcast.wav" -F "language=en" localhost:8080/v1/audio/transcriptions
+curl -F model=ggml-medium-q5_0 -F file=@samples/de-podcast.wav -F language=en localhost:8080/v1/audio/transcriptions\?stream=true
 ```
 
 There's more information on the API [here](doc/API.md).

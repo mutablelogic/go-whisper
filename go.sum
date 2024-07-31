@@ -26,8 +26,8 @@ github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6T
 github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/mutablelogic/go-client v1.0.9 h1:Eh4sjQOFDldP/L3IizqkcOD3WigZR+u1VaHTUM4ujYw=
 github.com/mutablelogic/go-client v1.0.9/go.mod h1:VLyB8j8IBJSK/FXvvqhmq93PRWDKkyLu8R7V2Vudb6A=
-github.com/mutablelogic/go-media v1.6.8 h1:3v4povSQlOnvg9mHx6Bp9NVdCCjrNdDCjMHBGFHnVE8=
-github.com/mutablelogic/go-media v1.6.8/go.mod h1:HulNT0yyH63a3FRlbuzNDakhOypYrmtFVkHEXZjDgAY=
+github.com/mutablelogic/go-media v1.6.9 h1:jkmqrMo7yKXaYXkALBeyVGpV6tNNEf36tmxdOX06VXI=
+github.com/mutablelogic/go-media v1.6.9/go.mod h1:HulNT0yyH63a3FRlbuzNDakhOypYrmtFVkHEXZjDgAY=
 github.com/mutablelogic/go-server v1.4.14 h1:MsYyS9MjBoYtWfJo/iw6DnZ8slnhakWhPPqVCuzuaV8=
 github.com/mutablelogic/go-server v1.4.14/go.mod h1:9nenPAohKu8bFoRgwHJh+3s8h0kLFjUAb8KZvT1TQNU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
