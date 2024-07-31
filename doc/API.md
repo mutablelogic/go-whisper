@@ -59,6 +59,24 @@ Downloads a model from remote huggingface repository. If the optional `stream` a
 the progress is streamed back to the client as a series of [text/event-stream](https://html.spec.whatwg.org/multipage/server-sent-events.html) events.
 
 If the model is already downloaded, a 200 OK status is returned. If the model was downloaded, a 201 Created status is returned.
+Example streaming response:
+
+```text
+event: ping
+
+event: progress
+data: {"status":"downloading ggml-medium-q5_0.bin","total":539212467,"completed":10159256}
+
+event: progress
+data: {"status":"downloading ggml-medium-q5_0.bin","total":539212467,"completed":21895036}
+
+event: progress
+data: {"status":"downloading ggml-medium-q5_0.bin","total":539212467,"completed":33540592}
+
+event: ok
+data: {"id":"ggml-medium-q5_0","object":"model","path":"ggml-medium-q5_0.bin","created":1722411778}
+```
+
 
 ### Delete Model
 
@@ -101,6 +119,28 @@ Transcribes audio into the input language.
 `response_format` (optional, defaults to `json`). The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
 
 If the optional `stream` argument is true, the segments of the transcription are returned as a series of [text/event-stream](https://html.spec.whatwg.org/multipage/server-sent-events.html) events. Otherwise, the full transcription is returned in the response body.
+
+Example streaming response:
+  
+```text
+event: ping
+
+event: task
+data: {"task":"translate","language":"en","duration":62.6155}
+
+event: ping
+
+event: segment
+data: {"id":0,"start":0,"end":14.2,"text":" What do you think about new media like Facebook, emails and cell phones?"}
+
+event: segment
+data: {"id":1,"start":14.2,"end":18.2,"text":" The new media make our life much easier."}
+
+event: segment
+data: {"id":2,"start":18.2,"end":23,"text":" You can get in touch with people much faster than before."}
+
+event: ok
+```
 
 ### Translation
 
