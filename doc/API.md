@@ -1,54 +1,112 @@
-# Draft API
+# Whisper server API
 
-(From OpenAPI docs)
+Based on OpenAPI docs
 
-## Create transcription - upload
+## Ping
+
+```html
+GET /v1/ping
+```
+
+Returns a OK status to indicate the API is up and running.
+
+## Models
+
+### List Models
+
+```html
+GET /v1/models
+```
+
+Returns a list of available models. Example response:
+
+```json
+{
+  "object": "list",
+  "models": [
+    {
+      "id": "ggml-large-v3",
+      "object": "model",
+      "path": "ggml-large-v3.bin",
+      "created": 1722090121
+    },
+    {
+      "id": "ggml-medium-q5_0",
+      "object": "model",
+      "path": "ggml-medium-q5_0.bin",
+      "created": 1722081999
+    }
+  ]
+}
+```
+
+### Download Model
+
+```html
+POST /v1/models
+POST /v1/models?stream={bool}
+```
+
+The request should be a application/json, multipart/form-data or application/x-www-form-urlencoded request with the following fields:
+
+```json
+{
+  "path": "ggml-large-v3.bin"
+}
+```
+
+Downloads a model from remote huggingface repository. If the optional `stream` argument is true,
+the progress is streamed back to the client as a series of [text/event-stream](https://html.spec.whatwg.org/multipage/server-sent-events.html) events.
+
+If the model is already downloaded, a 200 OK status is returned. If the model was downloaded, a 201 Created status is returned.
+
+### Delete Model
+
+```html
+DELETE /v1/models/{model-id}
+```
+
+Deletes a model by it's ID. If the model is deleted, a 200 OK status is returned.
+
+## Transcription and translation with file upload
+
+### Transcription
+
+This endpoint's purpose is to transcribe media files into text, in the language of the media file.
 
 ```html
 POST /v1/audio/transcriptions
+POST /v1/audio/transcriptions?stream={bool}
+```
+
+The request should be a multipart/form-data request with the following fields:
+
+```json
+{
+  "model": "<model-id>",
+  "file": "<binary data>",
+  "language": "<language-code>",
+  "response_format": "<response-format>",
+}
 ```
 
 Transcribes audio into the input language.
 
-**body - Required**
-The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
+`file` (required) The audio file object (not file name) to transcribe. This can be audio or video, and the format is auto-detected. The "best" audio stream is selected from the file, and the audio is converted to 16 kHz mono PCM format during transcription.
 
-**model - string - Required**
-ID of the model to use.
+`model-id` (required) ID of the model to use. This should have previously been downloaded.
 
-**language - string - Optional**
-The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.
+`language` (optional) The language of the input audio in ISO-639-1 format. If not set, then the language is auto-detected.
 
-**prompt - string - Optional**
-An optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
+`response_format` (optional, defaults to `json`). The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
 
-**response_format - string - Optional**
-Defaults to json
-The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
+If the optional `stream` argument is true, the segments of the transcription are returned as a series of [text/event-stream](https://html.spec.whatwg.org/multipage/server-sent-events.html) events. Otherwise, the full transcription is returned in the response body.
 
-**temperature - number - Optional**
-Defaults to 0
-The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use log probability to automatically increase the temperature until certain thresholds are hit.
+### Translation
 
-**timestamp_granularities[] - array - Optional**
-Defaults to segment
-The timestamp granularities to populate for this transcription. response_format must be set verbose_json to use timestamp granularities. Either or both of these options are supported: word, or segment. Note: There is no additional latency for segment timestamps, but generating word timestamps incurs additional latency.
+This is the same as transcription (above) except that the `language` parameter is not optional, and should be the language to translate the audio into.
 
-**Returns**
-The transcription object or a verbose transcription object.
-
-### Example request
-
-```bash
-curl https://localhost/v1/audio/transcriptions \
-  -H "Authorization: Bearer $OPENAI_API_KEY" \
-  -H "Content-Type: multipart/form-data" \
-  -F file="@/path/to/file/audio.mp3" \
-  -F model="whisper-1"
-```
-
-```json
-{
-  "text": "Imagine the wildest idea that you've ever had, and you're curious about how it might scale to something that's a 100, a 1,000 times bigger. This is a place where you can get to do that."
-}
+```html
+POST /v1/audio/translations
+POST /v1/audio/translations?stream={bool}
 ```
