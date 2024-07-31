@@ -231,6 +231,8 @@ func (ctx *Context) Result() *schema.Transcription {
 // PRIVATE METHODS
 
 func (ctx *Context) appendResult(ts time.Duration, segments bool) {
+	offset := len(ctx.result.Segments)
+
 	// Append text
 	for i := 0; i < ctx.whisper.NumSegments(); i++ {
 		seg := ctx.whisper.Segment(i)
@@ -239,7 +241,7 @@ func (ctx *Context) appendResult(ts time.Duration, segments bool) {
 	if segments {
 		// Append segments
 		for i := 0; i < ctx.whisper.NumSegments(); i++ {
-			ctx.result.Segments = append(ctx.result.Segments, newSegment(ts, ctx.whisper.Segment(i)))
+			ctx.result.Segments = append(ctx.result.Segments, newSegment(ts, int32(offset), ctx.whisper.Segment(i)))
 		}
 	}
 }
