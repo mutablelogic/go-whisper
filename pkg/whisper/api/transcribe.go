@@ -122,7 +122,6 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		if translate {
 			result.Task = "translate"
 		}
-		result.Duration = schema.Timestamp(segmenter.Duration())
 		result.Language = task.Language()
 
 		// Output the header
@@ -134,6 +133,93 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
 			return task.Transcribe(ctx, ts, buf, req.OutputSegments() || stream != nil, func(segment *schema.Segment) {
+				if stream != nil {
+					stream.Write("segment", segment)
+				}
+			})
+		}); err != nil {
+			return err
+		}
+
+		// Set the language and duration
+		result.Language = task.Language()
+		result.Duration = schema.Timestamp(segmenter.Duration())
+
+		// Return success
+		return nil
+	}); err != nil {
+		if stream != nil {
+			stream.Write("error", err.Error())
+		} else {
+			httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	// Return transcription if not streaming
+	if stream == nil {
+		httpresponse.JSON(w, result, http.StatusOK, 2)
+	} else {
+		stream.Write("ok")
+	}
+}
+
+func TranscribeStream(ctx context.Context, service *whisper.Whisper, w http.ResponseWriter, r *http.Request, modelId string) {
+	var query queryTranscribe
+	if err := httprequest.Query(&query, r.URL.Query()); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Get the model
+	model := service.GetModelById(modelId)
+	if model == nil {
+		httpresponse.Error(w, http.StatusNotFound, "model not found")
+		return
+	}
+
+	// Create a segmenter - read segments based on 10 second segment size
+	segmenter, err := segmenter.New(r.Body, 10*time.Second, whisper.SampleRate)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Create a text stream
+	var stream *httpresponse.TextStream
+	if query.Stream {
+		if stream = httpresponse.NewTextStream(w); stream == nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "Cannot create text stream")
+			return
+		}
+		defer stream.Close()
+	}
+
+	// Get context for the model, perform transcription
+	var result *schema.Transcription
+	if err := service.WithModel(model, func(task *task.Context) error {
+		// Set parameters for ttranslation, default to auto
+		task.SetTranslate(false)
+		if err := task.SetLanguage("auto"); err != nil {
+			return err
+		}
+
+		// TODO: Set temperature, etc
+
+		// Create response
+		result = task.Result()
+		result.Task = "transcribe"
+		result.Language = task.Language()
+
+		// Output the header
+		if stream != nil {
+			stream.Write("task", result)
+		}
+
+		// Read samples and transcribe them
+		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
+			// Perform the transcription, output segments in realtime, return any errors
+			return task.Transcribe(ctx, ts, buf, stream != nil, func(segment *schema.Segment) {
 				if stream != nil {
 					stream.Write("segment", segment)
 				}
