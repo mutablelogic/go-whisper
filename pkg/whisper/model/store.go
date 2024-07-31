@@ -120,12 +120,12 @@ func (s *Store) Rescan() error {
 }
 
 // Return a model by its Id
-func (s *Store) ById(name string) *schema.Model {
+func (s *Store) ById(id string) *schema.Model {
 	s.RLock()
 	defer s.RUnlock()
-	name = modelNameToId(name)
+
 	for _, model := range s.models {
-		if model.Id == name {
+		if model.Id == id {
 			return model
 		}
 	}

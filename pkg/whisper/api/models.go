@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -49,15 +48,13 @@ func ListModels(ctx context.Context, w http.ResponseWriter, service *whisper.Whi
 }
 
 func DownloadModel(ctx context.Context, w http.ResponseWriter, r *http.Request, service *whisper.Whisper) {
-	// Get query
+	// Get query and body
 	var query queryDownloadModel
+	var req reqDownloadModel
 	if err := httprequest.Query(&query, r.URL.Query()); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// Get request body
-	var req reqDownloadModel
 	if err := httprequest.Body(&req, r); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
@@ -69,34 +66,31 @@ func DownloadModel(ctx context.Context, w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// If we're streaming, then set response to streaming
+	// Create a text stream
+	var stream *httpresponse.TextStream
 	if query.Stream {
-		httpresponse.JSON(w, respDownloadModelStatus{
-			Status: fmt.Sprint("downloading ", req.Name()),
-		}, http.StatusProcessing, 0)
+		if stream = httpresponse.NewTextStream(w); stream == nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "Cannot create text stream")
+			return
+		}
+		defer stream.Close()
 	}
 
 	// Download the model
 	t := time.Now()
 	model, err := service.DownloadModel(ctx, req.Name(), func(curBytes, totalBytes uint64) {
-		if time.Since(t) > time.Second && query.Stream {
+		if time.Since(t) > time.Second && stream != nil {
 			t = time.Now()
-			json.NewEncoder(w).Encode(respDownloadModelStatus{
+			stream.Write("progress", respDownloadModelStatus{
 				Status:    fmt.Sprint("downloading ", req.Name()),
 				Total:     totalBytes,
 				Completed: curBytes,
 			})
-			// Flush the response
-			if f, ok := w.(http.Flusher); ok {
-				f.Flush()
-			}
 		}
 	})
 	if err != nil {
-		if query.Stream {
-			json.NewEncoder(w).Encode(respDownloadModelStatus{
-				Status: fmt.Sprint("error ", err.Error()),
-			})
+		if stream != nil {
+			stream.Write("error", err.Error())
 		} else {
 			httpresponse.Error(w, http.StatusBadGateway, err.Error())
 		}
@@ -105,7 +99,7 @@ func DownloadModel(ctx context.Context, w http.ResponseWriter, r *http.Request, 
 
 	// Return the model information
 	if query.Stream {
-		json.NewEncoder(w).Encode(model)
+		stream.Write("ok", model)
 	} else {
 		httpresponse.JSON(w, model, http.StatusCreated, 2)
 	}

@@ -253,6 +253,14 @@ func (c *FullParams) SetLanguage(v string) {
 	}
 }
 
+func (c *FullParams) Language() string {
+	v := C.GoString(c.language)
+	if v == "" {
+		return "auto"
+	}
+	return v
+}
+
 func (c *FullParams) SetProgressCallback(ctx *Context, cb ProgressCallback) {
 	key := cbkey(unsafe.Pointer(ctx))
 	if cb == nil {

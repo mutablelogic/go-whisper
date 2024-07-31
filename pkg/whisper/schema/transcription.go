@@ -8,12 +8,14 @@ import (
 //////////////////////////////////////////////////////////////////////////////
 // TYPES
 
+type Timestamp time.Duration
+
 type Transcription struct {
-	Task     string        `json:"task,omitempty"`
-	Language string        `json:"language,omitempty" writer:",width:8"`
-	Duration time.Duration `json:"duration,omitempty" writer:",width:8,right"`
-	Text     string        `json:"text" writer:",width:60,wrap"`
-	Segments []*Segment    `json:"segments,omitempty" writer:",width:40,wrap"`
+	Task     string     `json:"task,omitempty"`
+	Language string     `json:"language,omitempty" writer:",width:8"`
+	Duration Timestamp  `json:"duration,omitempty" writer:",width:8,right"`
+	Text     string     `json:"text,omitempty" writer:",width:60,wrap"`
+	Segments []*Segment `json:"segments,omitempty" writer:",width:40,wrap"`
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -25,4 +27,9 @@ func (t *Transcription) String() string {
 		return err.Error()
 	}
 	return string(data)
+}
+
+func (t Timestamp) MarshalJSON() ([]byte, error) {
+	// We convert durations into float64 seconds
+	return json.Marshal(time.Duration(t).Seconds())
 }
