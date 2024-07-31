@@ -15,7 +15,6 @@ import (
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	api "github.com/mutablelogic/go-whisper/pkg/whisper/api"
-	sys "github.com/mutablelogic/go-whisper/sys/whisper"
 )
 
 func main() {
@@ -28,14 +27,6 @@ func main() {
 		}
 		os.Exit(-1)
 	}
-
-	// Set logging
-	sys.Whisper_log_set(func(level sys.LogLevel, text string) {
-		if flags.Debug() && (level == sys.LogLevelDebug || level == sys.LogLevelInfo || level == sys.LogLevelWarn) {
-			return
-		}
-		log.Println(level, strings.TrimSpace(text))
-	})
 
 	// Determine the directory for models
 	dir := flags.Dir()
@@ -56,7 +47,15 @@ func main() {
 
 	// Create a whisper service
 	log.Println("Storing models at", dir)
-	whisper, err := whisper.New(dir, whisper.OptMaxConcurrent(1))
+	opts := []whisper.Opt{
+		whisper.OptLog(func(line string) {
+			log.Println(line)
+		}),
+	}
+	if flags.Debug() {
+		opts = append(opts, whisper.OptDebug())
+	}
+	whisper, err := whisper.New(dir, opts...)
 	if err != nil {
 		log.Println(err)
 		os.Exit(-2)
