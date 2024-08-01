@@ -8,7 +8,7 @@ import (
 
 	// Packages
 	wav "github.com/go-audio/wav"
-	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
+	whisper "github.com/mutablelogic/go-whisper"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 	assert "github.com/stretchr/testify/assert"
 
@@ -17,9 +17,9 @@ import (
 )
 
 const MODEL_TINY = "ggml-tiny.en-q5_1.bin"
-const SAMPLE_EN = "../../samples/jfk.wav"
-const SAMPLE_FR = "../../samples/OlivierL.wav"
-const SAMPLE_DE = "../../samples/de-podcast.wav"
+const SAMPLE_EN = "samples/jfk.wav"
+const SAMPLE_FR = "samples/OlivierL.wav"
+const SAMPLE_DE = "samples/ge-podcast.wav"
 
 func Test_whisper_001(t *testing.T) {
 	assert := assert.New(t)
