@@ -163,15 +163,8 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 
 		// TODO: Set temperature, etc
 
-		// Create response
-		result = task.Result()
-		result.Task = "transcribe"
-		if translate {
-			result.Task = "translate"
-		}
-		result.Language = task.Language()
-
 		// Output the header
+		result.Language = taskctx.Language()
 		if stream != nil {
 			stream.Write("task", taskctx.Result())
 		}
@@ -203,8 +196,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 		}
 
 		// Set the language and duration
-		result.Language = task.Language()
-		result.Duration = schema.Timestamp(segmenter.Duration())
+		result.Language = taskctx.Language()
 
 		// Return success
 		return nil
@@ -225,6 +217,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	}
 }
 
+/*
 func TranscribeStream(ctx context.Context, service *whisper.Whisper, w http.ResponseWriter, r *http.Request, modelId string) {
 	var query queryTranscribe
 	if err := httprequest.Query(&query, r.URL.Query()); err != nil {
@@ -331,6 +324,7 @@ func TranscribeStream(ctx context.Context, service *whisper.Whisper, w http.Resp
 		}
 	}
 }
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS
