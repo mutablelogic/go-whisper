@@ -153,8 +153,8 @@ func (task *Context) CanTranslate() bool {
 
 // Transcribe samples. The samples should be 16KHz float32 samples in
 // a single channel. Appends the transcription to the result, and includes
-// segment data if segments is true.
-func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples []float32, segments bool, fn NewSegmentFunc) error {
+// segment data if the new segment function is not nil
+func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples []float32, fn NewSegmentFunc) error {
 	// Set the 'abort' function
 	task.params.SetAbortCallback(task.whisper, func() bool {
 		select {
@@ -169,8 +169,9 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 	if fn != nil {
 		task.params.SetSegmentCallback(task.whisper, func(new_segments int) {
 			num_segments := task.whisper.NumSegments()
+			offset := len(task.result.Segments)
 			for i := num_segments - new_segments; i < num_segments; i++ {
-				fn(newSegment(ts, task.whisper.Segment(i)))
+				fn(newSegment(ts, int32(offset), task.whisper.Segment(i)))
 			}
 		})
 	}
@@ -191,7 +192,7 @@ func (task *Context) Transcribe(ctx context.Context, ts time.Duration, samples [
 	task.params.SetSegmentCallback(task.whisper, nil)
 
 	// Append the transcription
-	task.appendResult(ts, segments)
+	task.appendResult(ts, fn != nil)
 
 	// Return success
 	return nil
@@ -222,6 +223,21 @@ func (ctx *Context) SetTranslate(v bool) {
 	ctx.params.SetTranslate(v)
 }
 
+// Return the translate flag
+func (ctx *Context) Translate() bool {
+	return ctx.params.Translate()
+}
+
+// Set diarize flag
+func (ctx *Context) SetDiarize(v bool) {
+	ctx.params.SetDiarize(v)
+}
+
+// Return the diarize flag
+func (ctx *Context) Diarize() bool {
+	return ctx.params.Diarize()
+}
+
 // Return the transcription result
 func (ctx *Context) Result() *schema.Transcription {
 	return ctx.result
@@ -231,6 +247,8 @@ func (ctx *Context) Result() *schema.Transcription {
 // PRIVATE METHODS
 
 func (ctx *Context) appendResult(ts time.Duration, segments bool) {
+	offset := len(ctx.result.Segments)
+
 	// Append text
 	for i := 0; i < ctx.whisper.NumSegments(); i++ {
 		seg := ctx.whisper.Segment(i)
@@ -239,7 +257,7 @@ func (ctx *Context) appendResult(ts time.Duration, segments bool) {
 	if segments {
 		// Append segments
 		for i := 0; i < ctx.whisper.NumSegments(); i++ {
-			ctx.result.Segments = append(ctx.result.Segments, newSegment(ts, ctx.whisper.Segment(i)))
+			ctx.result.Segments = append(ctx.result.Segments, newSegment(ts, int32(offset), ctx.whisper.Segment(i)))
 		}
 	}
 }

@@ -225,7 +225,7 @@ func Test_whisper_005(t *testing.T) {
 
 		assert.NoError(service.WithModel(model, func(task *task.Context) error {
 			t.Log("Transcribing", len(samples), "samples")
-			return task.Transcribe(context.Background(), 0, samples, false, nil)
+			return task.Transcribe(context.Background(), 0, samples, nil)
 		}))
 	})
 
@@ -241,7 +241,7 @@ func Test_whisper_005(t *testing.T) {
 
 		assert.NoError(service.WithModel(model, func(task *task.Context) error {
 			t.Log("Transcribing", len(samples), "samples")
-			return task.Transcribe(context.Background(), 0, samples, false, nil)
+			return task.Transcribe(context.Background(), 0, samples, nil)
 		}))
 	})
 
@@ -257,7 +257,7 @@ func Test_whisper_005(t *testing.T) {
 
 		assert.NoError(service.WithModel(model, func(task *task.Context) error {
 			t.Log("Transcribing", len(samples), "samples")
-			return task.Transcribe(context.Background(), 0, samples, false, nil)
+			return task.Transcribe(context.Background(), 0, samples, nil)
 		}))
 	})
 }
@@ -294,7 +294,7 @@ func Test_whisper_006(t *testing.T) {
 
 			assert.NoError(service.WithModel(model, func(task *task.Context) error {
 				t.Log("Transcribing", len(samples), "samples")
-				return task.Transcribe(context.Background(), 0, samples, false, nil)
+				return task.Transcribe(context.Background(), 0, samples, nil)
 			}))
 		})
 
@@ -312,7 +312,7 @@ func Test_whisper_006(t *testing.T) {
 
 			assert.NoError(service.WithModel(model, func(task *task.Context) error {
 				t.Log("Transcribing", len(samples), "samples")
-				return task.Transcribe(context.Background(), 0, samples, false, nil)
+				return task.Transcribe(context.Background(), 0, samples, nil)
 			}))
 		})
 
@@ -330,7 +330,7 @@ func Test_whisper_006(t *testing.T) {
 
 			assert.NoError(service.WithModel(model, func(task *task.Context) error {
 				t.Log("Transcribing", len(samples), "samples")
-				return task.Transcribe(context.Background(), 0, samples, false, nil)
+				return task.Transcribe(context.Background(), 0, samples, nil)
 			}))
 		})
 	})

@@ -62,7 +62,7 @@ curl -F model=ggml-medium-q5_0 -F file=@samples/jfk.wav localhost:8080/v1/audio/
 To translate a media file into a different language, you can use the following command:
 
 ```bash
-curl -F model=ggml-medium-q5_0 -F file=@samples/ge-podcast.wav -F language=en localhost:8080/v1/audio/translations\?stream=true
+curl -F model=ggml-medium-q5_0 -F file=@samples/de-podcast.wav -F language=en localhost:8080/v1/audio/translations\?stream=true
 ```
 
 There's more information on the API [here](doc/API.md).

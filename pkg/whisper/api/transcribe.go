@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	// Packages
@@ -35,16 +37,37 @@ type queryTranscribe struct {
 	Stream bool `json:"stream"`
 }
 
+type TaskType int
+type ResponseFormat string
+
+///////////////////////////////////////////////////////////////////////////////
+// GLOBALS
+
 const (
 	minSegmentSize     = 5 * time.Second
 	maxSegmentSize     = 10 * time.Minute
 	defaultSegmentSize = 5 * time.Minute
 )
 
+const (
+	_          TaskType = iota
+	Transcribe          // Transcribe audio
+	Translate           // Translate text
+	Diarize             // Diarize audio
+)
+
+const (
+	FormatJson        ResponseFormat = "json"
+	FormatText        ResponseFormat = "text"
+	FormatSrt         ResponseFormat = "srt"
+	FormatVerboseJson ResponseFormat = "verbose_json"
+	FormatVtt         ResponseFormat = "vtt"
+)
+
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.ResponseWriter, r *http.Request, translate bool) {
+func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.ResponseWriter, r *http.Request, t TaskType) {
 	var req reqTranscribe
 	var query queryTranscribe
 	if err := httprequest.Query(&query, r.URL.Query()); err != nil {
@@ -96,21 +119,45 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 
 	// Get context for the model, perform transcription
 	var result *schema.Transcription
-	if err := service.WithModel(model, func(task *task.Context) error {
-		// Check model
-		if translate && !task.CanTranslate() {
-			return ErrBadParameter.With("model is not multilingual, cannot translate")
-		}
+	if err := service.WithModel(model, func(taskctx *task.Context) error {
+		result = taskctx.Result()
 
-		// Set parameters for transcription & translation, default to english
-		task.SetTranslate(translate)
-		if req.Language != nil {
-			if err := task.SetLanguage(*req.Language); err != nil {
+		switch t {
+		case Translate:
+			// Check model
+			if !taskctx.CanTranslate() {
+				return ErrBadParameter.With("model is not multilingual, cannot translate")
+			}
+			taskctx.SetTranslate(true)
+			taskctx.SetDiarize(false)
+			result.Task = "translate"
+
+			// Set language to EN
+			if err := taskctx.SetLanguage("en"); err != nil {
 				return err
 			}
-		} else if translate {
-			if err := task.SetLanguage("en"); err != nil {
-				return err
+		case Diarize:
+			taskctx.SetTranslate(false)
+			taskctx.SetDiarize(true)
+			result.Task = "diarize"
+
+			// Set language
+			if req.Language != nil {
+				if err := taskctx.SetLanguage(*req.Language); err != nil {
+					return err
+				}
+			}
+		default:
+			// Transcribe
+			taskctx.SetTranslate(false)
+			taskctx.SetDiarize(false)
+			result.Task = "transribe"
+
+			// Set language
+			if req.Language != nil {
+				if err := taskctx.SetLanguage(*req.Language); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -126,16 +173,30 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 
 		// Output the header
 		if stream != nil {
-			stream.Write("task", result)
+			stream.Write("task", taskctx.Result())
 		}
 
 		// Read samples and transcribe them
 		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
-			return task.Transcribe(ctx, ts, buf, req.OutputSegments() || stream != nil, func(segment *schema.Segment) {
-				if stream != nil {
-					stream.Write("segment", segment)
+			return taskctx.Transcribe(ctx, ts, buf, func(segment *schema.Segment) {
+				// Segment callback
+				if stream == nil {
+					return
 				}
+				var buf bytes.Buffer
+				switch req.ResponseFormat() {
+				case FormatVerboseJson, FormatJson:
+					stream.Write("segment", segment)
+					return
+				case FormatSrt:
+					task.WriteSegmentSrt(&buf, segment)
+				case FormatVtt:
+					task.WriteSegmentVtt(&buf, segment)
+				case FormatText:
+					task.WriteSegmentText(&buf, segment)
+				}
+				stream.Write("segment", buf.String())
 			})
 		}); err != nil {
 			return err
@@ -219,7 +280,7 @@ func TranscribeStream(ctx context.Context, service *whisper.Whisper, w http.Resp
 		// Read samples and transcribe them
 		if err := segmenter.Decode(ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, output segments in realtime, return any errors
-			return task.Transcribe(ctx, ts, buf, stream != nil, func(segment *schema.Segment) {
+			return task.Transcribe(ctx, ts, buf, func(segment *schema.Segment) {
 				if stream != nil {
 					stream.Write("segment", segment)
 				}
@@ -229,7 +290,7 @@ func TranscribeStream(ctx context.Context, service *whisper.Whisper, w http.Resp
 		}
 
 		// Set the language
-		result.Language = task.Language()
+		result.Language = taskctx.Language()
 
 		// Return success
 		return nil
@@ -242,11 +303,32 @@ func TranscribeStream(ctx context.Context, service *whisper.Whisper, w http.Resp
 		return
 	}
 
-	// Return transcription if not streaming
-	if stream == nil {
-		httpresponse.JSON(w, result, http.StatusOK, 2)
-	} else {
+	// Return streaming ok
+	if stream != nil {
 		stream.Write("ok")
+		return
+	}
+
+	// Rrturn result based on response format
+	switch req.ResponseFormat() {
+	case FormatJson, FormatVerboseJson:
+		httpresponse.JSON(w, result, http.StatusOK, 0)
+	case FormatText:
+		httpresponse.Text(w, "", http.StatusOK)
+		for _, seg := range result.Segments {
+			task.WriteSegmentText(w, seg)
+		}
+		w.Write([]byte("\n"))
+	case FormatSrt:
+		httpresponse.Text(w, "", http.StatusOK, "Content-Type", "application/x-subrip")
+		for _, seg := range result.Segments {
+			task.WriteSegmentSrt(w, seg)
+		}
+	case FormatVtt:
+		httpresponse.Text(w, "WEBVTT\n\n", http.StatusOK, "Content-Type", "text/vtt")
+		for _, seg := range result.Segments {
+			task.WriteSegmentVtt(w, seg)
+		}
 	}
 }
 
@@ -270,17 +352,29 @@ func (r reqTranscribe) Validate() error {
 	}
 	return nil
 }
-func (r reqTranscribe) ResponseFormat() string {
+func (r reqTranscribe) ResponseFormat() ResponseFormat {
 	if r.ResponseFmt == nil {
-		return "json"
+		return FormatJson
 	}
-	return *r.ResponseFmt
+	switch strings.ToLower(*r.ResponseFmt) {
+	case "json":
+		return FormatJson
+	case "text":
+		return FormatText
+	case "srt":
+		return FormatSrt
+	case "verbose_json":
+		return FormatVerboseJson
+	case "vtt":
+		return FormatVtt
+	}
+	return FormatJson
 }
 
 func (r reqTranscribe) OutputSegments() bool {
 	// We want to output segments if the response format is  "srt", "verbose_json", "vtt"
 	switch r.ResponseFormat() {
-	case "srt", "verbose_json", "vtt":
+	case FormatSrt, FormatVerboseJson, FormatVtt:
 		return true
 	default:
 		return false

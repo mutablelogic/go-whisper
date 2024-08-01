@@ -20,9 +20,9 @@ func NewFlags(name string, args []string) (*Flags, error) {
 		FlagSet: flag.NewFlagSet(name, flag.ContinueOnError),
 	}
 	flags.endpoint = flags.String("endpoint", "/v1", "HTTP endpoint")
-	flags.listen = flags.String("listen", ":8080", "HTTP Listen address")
+	flags.listen = flags.String("listen", "127.0.0.1:8080", "HTTP Listen address")
 	flags.dir = flags.String("dir", "${WHISPER_DATA}", "Model data directory")
-	flags.debug = flags.Bool("debug", false, "Display debug information")
+	flags.debug = flags.Bool("debug", false, "Output additional debug information")
 
 	// Parse flags and return any error
 	return flags, flags.Parse(args)

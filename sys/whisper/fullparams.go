@@ -202,10 +202,6 @@ func (c *FullParams) SetDurationMS(v int) {
 	c.duration_ms = (C.int)(v)
 }
 
-func (c *FullParams) SetTranslate(v bool) {
-	c.translate = (C.bool)(v)
-}
-
 func (c *FullParams) SetNoContext(v bool) {
 	c.no_context = (C.bool)(v)
 }
@@ -238,16 +234,28 @@ func (c *FullParams) SetTokenTimestamps(v bool) {
 	c.token_timestamps = (C.bool)(v)
 }
 
-func (c *FullParams) SetDiarizeEnable(v bool) {
+func (c *FullParams) SetTranslate(v bool) {
+	c.translate = (C.bool)(v)
+}
+
+func (c *FullParams) Translate() bool {
+	return bool(c.translate)
+}
+
+func (c *FullParams) SetDiarize(v bool) {
 	c.tdrz_enable = (C.bool)(v)
+}
+
+func (c *FullParams) Diarize() bool {
+	return bool(c.tdrz_enable)
 }
 
 func (c *FullParams) SetLanguage(v string) {
 	v = strings.ToLower(v)
 	if v == "" || v == "auto" {
-		c.language = (*C.char)(unsafe.Pointer(uintptr(0)))
+		c.language = nil
 	} else if id := Whisper_lang_id(v); id == -1 {
-		c.language = (*C.char)(unsafe.Pointer(uintptr(0)))
+		c.language = nil
 	} else {
 		c.language = C.whisper_lang_str(C.int(id))
 	}
