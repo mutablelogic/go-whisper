@@ -70,7 +70,7 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 
 		switch r.Method {
 		case http.MethodPost:
-			TranscribeFile(r.Context(), whisper, w, r, true)
+			TranscribeFile(r.Context(), whisper, w, r, Translate)
 		default:
 			httpresponse.Error(w, http.StatusMethodNotAllowed)
 		}
@@ -84,7 +84,21 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 
 		switch r.Method {
 		case http.MethodPost:
-			TranscribeFile(r.Context(), whisper, w, r, false)
+			TranscribeFile(r.Context(), whisper, w, r, Transcribe)
+		default:
+			httpresponse.Error(w, http.StatusMethodNotAllowed)
+		}
+	})
+
+	// Diarize: POST /v1/audio/diarize
+	//   Transcribes audio into the input language - language parameter should be set to the source
+	//   language of the audio. Output speaker parts.
+	mux.HandleFunc(joinPath(base, "audio/diarize"), func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		switch r.Method {
+		case http.MethodPost:
+			TranscribeFile(r.Context(), whisper, w, r, Diarize)
 		default:
 			httpresponse.Error(w, http.StatusMethodNotAllowed)
 		}

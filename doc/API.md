@@ -144,9 +144,20 @@ event: ok
 
 ### Translation
 
-This is the same as transcription (above) except that the `language` parameter is not optional, and should be the language to translate the audio into.
+This is the same as transcription (above) except that the `language` parameter is always set to 'en', to translate the audio into English.
 
 ```html
 POST /v1/audio/translations
 POST /v1/audio/translations?stream={bool}
 ```
+
+### Diarization
+
+To diarize an Enlgish-language audio file, use the following endpoint:
+
+```html
+POST /v1/audio/diarize
+POST /v1/audio/diarize?stream={bool}
+```
+
+The segments returned include a "speaker_turn" field which indicates that the segment is a new speaker. It requires a separate download of a [diarization model](https://huggingface.co/akashmjn/tinydiarize-whisper.cpp).

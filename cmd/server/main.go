@@ -15,6 +15,7 @@ import (
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	api "github.com/mutablelogic/go-whisper/pkg/whisper/api"
+	version "github.com/mutablelogic/go-whisper/pkg/whisper/version"
 )
 
 func main() {
@@ -43,6 +44,16 @@ func main() {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		log.Println(err)
 		os.Exit(-1)
+	}
+
+	// Print version
+	if version.GitSource != "" {
+		log.Println(name, version.GitSource)
+	} else {
+		log.Println(name)
+	}
+	if version.GitTag != "" {
+		log.Println("Version:", version.GitTag)
 	}
 
 	// Create a whisper service
@@ -77,7 +88,7 @@ func main() {
 	api.RegisterEndpoints(flags.Endpoint(), mux, whisper)
 
 	// Create a new HTTP server
-	log.Println("List address", flags.Listen())
+	log.Println("Listen address", flags.Listen())
 	server, err := httpserver.Config{
 		Listen: flags.Listen(),
 		Router: mux,
