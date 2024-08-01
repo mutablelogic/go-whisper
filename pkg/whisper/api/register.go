@@ -6,7 +6,7 @@ import (
 
 	// Packages
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
-	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper"
 )
 
 /////////////////////////////////////////////////////////////////////////////
@@ -103,6 +103,21 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 			httpresponse.Error(w, http.StatusMethodNotAllowed)
 		}
 	})
+
+	// Transcribe: POST /v1/audio/transcriptions/{model-id}
+	//   Transcribes streamed media into the input language
+	/*
+		mux.HandleFunc(joinPath(base, "audio/transcriptions/{model}"), func(w http.ResponseWriter, r *http.Request) {
+			defer r.Body.Close()
+
+			model := r.PathValue("model")
+			switch r.Method {
+			case http.MethodPost:
+				TranscribeStream(r.Context(), whisper, w, r, model)
+			default:
+				httpresponse.Error(w, http.StatusMethodNotAllowed)
+			}
+		})*/
 }
 
 /////////////////////////////////////////////////////////////////////////////

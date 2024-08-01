@@ -30,22 +30,17 @@ ifeq ($(GGML_CUDA),1)
 endif
 
 # Targets
-all: server cli
+all: whisper
 
 # Generate the pkg-config files
 generate: mkdir go-tidy
 	@echo "Generating pkg-config"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} go generate ./sys/whisper
 
-# Make server
-server: mkdir generate go-tidy libwhisper libggml
-	@echo "Building whisper-server"
-	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper-server ./cmd/server
-
-# Make cli
-cli: mkdir generate go-tidy
-	@echo "Building whisper-cli"
-	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper-cli ./cmd/cli
+# Make whisper
+whisper: mkdir generate go-tidy libwhisper libggml
+	@echo "Building whisper"
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper ./cmd/whisper
 
 # Build docker container
 docker: docker-dep submodule
@@ -75,11 +70,6 @@ libggml: submodule
 	@echo "Building libggml.a"
 	@cd third_party/whisper.cpp && make -j$(nproc) libggml.a
 
-# Build whisper-server
-whisper-server: submodule
-	@echo "Building whisper-server"
-	@cd third_party/whisper.cpp && make -j$(nproc) server
-	
 # Push docker container
 docker-push: docker-dep 
 	@echo push docker image: ${BUILD_TAG}

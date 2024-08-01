@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	// Packages
-
-	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
 	// Namespace imports
