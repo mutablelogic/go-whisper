@@ -6,7 +6,7 @@ import (
 
 	// Packages
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
-	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper"
 )
 
 /////////////////////////////////////////////////////////////////////////////

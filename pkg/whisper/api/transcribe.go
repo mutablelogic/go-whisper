@@ -10,7 +10,7 @@ import (
 	// Packages
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
-	"github.com/mutablelogic/go-whisper/pkg/whisper"
+	"github.com/mutablelogic/go-whisper"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
 	"github.com/mutablelogic/go-whisper/pkg/whisper/task"

@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	// Packages
-	"github.com/mutablelogic/go-media/pkg/ffmpeg"
+	ffmpeg "github.com/mutablelogic/go-media/pkg/ffmpeg"
 	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
 	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
