@@ -15,7 +15,7 @@ import (
 
 const SAMPLE_EN = "../../samples/jfk.wav"
 const SAMPLE_FR = "../../samples/OlivierL.wav"
-const SAMPLE_DE = "../../samples/ge-podcast.wav"
+const SAMPLE_DE = "../../samples/de-podcast.wav"
 
 func Test_whisper_00(t *testing.T) {
 	assert := assert.New(t)
@@ -482,7 +482,7 @@ func Test_whisper_05(t *testing.T) {
 		params.SetLanguage("auto")
 		params.SetTranslate(false)
 		params.SetTokenTimestamps(true)
-		params.SetDiarizeEnable(true)
+		params.SetDiarize(true)
 		params.SetSegmentCallback(ctx, func(new_segments int) {
 			num_segments := ctx.NumSegments()
 			for i := num_segments - new_segments; i < num_segments; i++ {
@@ -518,7 +518,7 @@ func Test_whisper_05(t *testing.T) {
 		params.SetLanguage("auto")
 		params.SetTranslate(false)
 		params.SetTokenTimestamps(true)
-		params.SetDiarizeEnable(true)
+		params.SetDiarize(true)
 		params.SetSegmentCallback(ctx, func(new_segments int) {
 			num_segments := ctx.NumSegments()
 			for i := num_segments - new_segments; i < num_segments; i++ {
