@@ -11,6 +11,7 @@ require (
 	github.com/mutablelogic/go-media v1.6.11
 	github.com/mutablelogic/go-server v1.4.15
 	github.com/stretchr/testify v1.9.0
+	github.com/veandco/go-sdl2 v0.4.40
 )
 
 require (
