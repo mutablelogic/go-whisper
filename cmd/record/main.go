@@ -11,6 +11,7 @@ import (
 	// Packages
 	context "github.com/mutablelogic/go-server/pkg/context"
 	whisper "github.com/mutablelogic/go-whisper"
+	vad "github.com/mutablelogic/go-whisper/pkg/vad"
 	sdl "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -35,12 +36,10 @@ func deviceNameForIndex(i int) string {
 	return sdl.GetAudioDeviceName(i, true)
 }
 
-func f32abs(x float32) float32 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
+var (
+	v = vad.New(20, 0.01, 2*time.Second)
+	s bool
+)
 
 // callback function to capture audio data
 //
@@ -48,15 +47,13 @@ func f32abs(x float32) float32 {
 func audio_callback(_ unsafe.Pointer, stream unsafe.Pointer, length C.int) {
 	frame := cFloat32Slice(stream, length)
 
-	// Compute frame energy
-	energy := float32(0)
-	for i := 0; i < len(frame); i++ {
-		energy += frame[i] * frame[i]
-	}
-	energy /= float32(len(frame))
-
-	if energy > 0.000002 {
-		fmt.Printf("Energy: %.6f\n", energy)
+	if state := v.Decode(frame); state != s {
+		if state {
+			fmt.Println("Recording frame")
+		} else {
+			fmt.Println("Silence")
+		}
+		s = state
 	}
 }
 
