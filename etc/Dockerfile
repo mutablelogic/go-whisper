@@ -35,7 +35,11 @@ RUN make -j$(nproc)
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
 COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin/whisper
+COPY --from=build /app/build/whisper /usr/local/bin/whisper
+COPY --chmod=755 etc/entrypoint.sh .
 
-# Expose
-ENTRYPOINT [ "/usr/local/bin/whisper" ]
-CMD [ "server", "--dir=/data" ]
+# Entrypoint when running the server
+ENTRYPOINT [ "/entrypoint.sh" ]
+STOPSIGNAL SIGQUIT
+EXPOSE 80
+CMD [ "/usr/local/bin/whisper", "-dir", "/data", "-listen", ":80", "server" ]
