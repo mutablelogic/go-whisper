@@ -33,7 +33,6 @@ RUN make -j$(nproc) server
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
-RUN apt-get -y update && apt-get -y upgrade && apt-get -y install libgomp1
 COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin/whisper
 
 # Expose
