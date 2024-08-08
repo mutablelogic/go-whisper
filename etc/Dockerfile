@@ -13,7 +13,8 @@ ARG GO_VERSION
 ARG ARCH
 ARG OS
 
-RUN apt-get -y install software-properties-common curl \
+RUN apt-get -y update \
+ && apt-get -y install software-properties-common curl \
  && add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6 \
  && apt-get -y update \
  && apt-get -y install libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
