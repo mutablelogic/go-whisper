@@ -28,7 +28,7 @@ type CLI struct {
 	Globals
 	Models   ModelsCmd   `cmd:"models" help:"List models"`
 	Download DownloadCmd `cmd:"download" help:"Download a model"`
-	Server   ServerCmd   `cmd:"models" help:"Run the whisper server"`
+	Server   ServerCmd   `cmd:"server" help:"Run the whisper server"`
 }
 
 func main() {
