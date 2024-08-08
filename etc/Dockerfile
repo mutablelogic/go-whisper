@@ -30,7 +30,6 @@ COPY . .
 # Make whisper-server
 ENV CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH}
 ENV GGML_CUDA=1
-ENV PKG_CONFIG_PATH=/usr/lib/pkgconfig:${PKG_CONFIG_PATH}
 RUN make -j$(nproc)
 
 # Setup runtime container
