@@ -51,7 +51,7 @@ docker: docker-dep submodule
 		--build-arg OS=${OS} \
 		--build-arg SOURCE=${BUILD_MODULE} \
 		--build-arg VERSION=${VERSION} \
-		-f etc/Dockerfile.${OS}-${ARCH} .
+		-f etc/Dockerfile .
 
 # Test whisper bindings
 test: generate libwhisper libggml
