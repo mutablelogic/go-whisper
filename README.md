@@ -96,8 +96,7 @@ See all the other targets in the `Makefile` for more information.
 
 ## Developing
 
-The `cmd/examples` directory contains a simple example of how to use the `whisper` package
-in your own code.
+TODO
 
 ## Status
 
