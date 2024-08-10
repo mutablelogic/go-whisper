@@ -12,7 +12,12 @@ import (
 /////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper) {
+func RegisterEndpoints(base string, whisper *whisper.Whisper, mux *http.ServeMux) *http.ServeMux {
+	// Create a new router
+	if mux == nil {
+		mux = http.NewServeMux()
+	}
+
 	// Health: GET /v1/health
 	//   returns an empty OK response
 	mux.HandleFunc(joinPath(base, "health"), func(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +123,9 @@ func RegisterEndpoints(base string, mux *http.ServeMux, whisper *whisper.Whisper
 				httpresponse.Error(w, http.StatusMethodNotAllowed)
 			}
 		})*/
+
+	// Return mux
+	return mux
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -17,7 +17,7 @@ RUN apt-get -y update \
  && apt-get -y install software-properties-common curl \
  && add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6 \
  && apt-get -y update \
- && apt-get -y install libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+ && apt-get -y install libavformat-dev libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
@@ -34,6 +34,8 @@ RUN make -j$(nproc)
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
+RUN apt-get -y update \
+ && apt-get -y install libavformat58 libavcodec58 libavdevice58 libavfilter7 libavutil56 libswscale5 libswresample3
 COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin/whisper
 COPY --from=build /app/build/whisper /usr/local/bin/whisper
 COPY --chmod=755 etc/entrypoint.sh .

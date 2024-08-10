@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	// Packages
 	"github.com/mutablelogic/go-server/pkg/httpserver"
@@ -15,17 +14,11 @@ type ServerCmd struct {
 }
 
 func (cmd *ServerCmd) Run(ctx *Globals) error {
-	// Create a mux for serving requests, then register the endpoints with the mux
-	mux := http.NewServeMux()
-
-	// Register the endpoints
-	api.RegisterEndpoints(cmd.Endpoint, mux, ctx.service)
-
 	// Create a new HTTP server
-	log.Println("List address", cmd.Listen)
+	log.Println("Listen address", cmd.Listen)
 	server, err := httpserver.Config{
 		Listen: cmd.Listen,
-		Router: mux,
+		Router: api.RegisterEndpoints(cmd.Endpoint, ctx.service, nil),
 	}.New()
 	if err != nil {
 		return err

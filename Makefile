@@ -16,11 +16,11 @@ BUILD_DIR := build
 
 # Build flags
 BUILD_MODULE := $(shell cat go.mod | head -1 | cut -d ' ' -f 2)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitSource=${BUILD_MODULE}
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitTag=$(shell git describe --tags --always)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitBranch=$(shell git name-rev HEAD --name-only --always)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitHash=$(shell git rev-parse HEAD)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GoBuildTime=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitSource=${BUILD_MODULE}
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitTag=$(shell git describe --tags --always)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitBranch=$(shell git name-rev HEAD --name-only --always)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitHash=$(shell git rev-parse HEAD)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GoBuildTime=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)" 
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
