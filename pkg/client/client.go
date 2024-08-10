@@ -35,6 +35,13 @@ func New(endpoint string, opts ...client.ClientOpt) (*Client, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// PING
+
+func (c *Client) Ping(ctx context.Context) error {
+	return c.DoWithContext(ctx, client.MethodGet, nil, client.OptPath("health"))
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // MODELS
 
 func (c *Client) ListModels(ctx context.Context) ([]schema.Model, error) {

@@ -101,7 +101,7 @@ func TranscribeFile(ctx context.Context, service *whisper.Whisper, w http.Respon
 	defer f.Close()
 
 	// Create a segmenter - read segments based on requested segment size
-	segmenter, err := segmenter.New(f, req.SegmentDur(), whisper.SampleRate)
+	segmenter, err := segmenter.NewReader(f, req.SegmentDur(), whisper.SampleRate)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, err.Error())
 		return
