@@ -5,9 +5,8 @@ import (
 	"time"
 
 	// Packages
-
 	whisper "github.com/mutablelogic/go-whisper"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
 	segmenter "github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
 	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
 
@@ -18,8 +17,8 @@ import (
 type TranscribeCmd struct {
 	Model    string `arg:"" help:"Model to use"`
 	Path     string `arg:"" help:"Path to audio file"`
-	Language string `flag:"language" help:"Language to transcribe"`
-	Format   string `flag:"format" help:"Output format" default:"text" enum:"text,srt,vtt,json"`
+	Language string `flag:"language" help:"Language to transcribe" default:"auto"`
+	Format   string `flag:"format" help:"Output format" default:"text" enum:"json,verbose_json,text,vtt,srt"`
 }
 
 func (cmd *TranscribeCmd) Run(ctx *Globals) error {

@@ -1,7 +1,5 @@
 package main
 
-// Packages
-
 type DeleteCmd struct {
 	Model string `arg:"" help:"Model id to delete"`
 }
