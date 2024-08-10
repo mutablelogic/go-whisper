@@ -30,7 +30,10 @@ type Globals struct {
 type CLI struct {
 	Globals
 
-	Ping PingCmd `cmd help:"Ping the whisper service"`
+	Ping     PingCmd     `cmd:"ping" help:"Ping the whisper service"`
+	Models   ModelsCmd   `cmd:"models" help:"List models"`
+	Download DownloadCmd `cmd:"download" help:"Download a model"`
+	Delete   DeleteCmd   `cmd:"delete" help:"Delete a model"`
 }
 
 ////////////////////////////////////////////////////////////////////////////////
