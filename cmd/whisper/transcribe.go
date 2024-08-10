@@ -6,9 +6,9 @@ import (
 
 	// Packages
 	whisper "github.com/mutablelogic/go-whisper"
-	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
-	segmenter "github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
-	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	schema "github.com/mutablelogic/go-whisper/pkg/schema"
+	segmenter "github.com/mutablelogic/go-whisper/pkg/segmenter"
+	task "github.com/mutablelogic/go-whisper/pkg/task"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"

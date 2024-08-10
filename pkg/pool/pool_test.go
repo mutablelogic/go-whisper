@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	// Packages
-	"github.com/mutablelogic/go-whisper/pkg/whisper/pool"
+	"github.com/mutablelogic/go-whisper/pkg/pool"
 )
 
 type Item struct {

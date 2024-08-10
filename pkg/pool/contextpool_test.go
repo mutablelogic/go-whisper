@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	// Packages
-	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
-	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	pool "github.com/mutablelogic/go-whisper/pkg/pool"
+	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
 func Test_contextpool_001(t *testing.T) {

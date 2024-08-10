@@ -7,11 +7,11 @@ import (
 	"time"
 
 	// Packages
-	segmenter "github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
+	segmenter "github.com/mutablelogic/go-whisper/pkg/segmenter"
 	assert "github.com/stretchr/testify/assert"
 )
 
-const SAMPLE = "../../../samples/OlivierL.wav"
+const SAMPLE = "../../samples/OlivierL.wav"
 
 func Test_segmenter_001(t *testing.T) {
 	assert := assert.New(t)

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	// Packages
-	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports

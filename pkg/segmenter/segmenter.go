@@ -14,6 +14,8 @@ import (
 	. "github.com/djthorpe/go-errors"
 )
 
+// A segmenter reads audio samples from a reader and segments them into
+// fixed-size chunks. The segmenter can be used to process audio samples
 type Segmenter struct {
 	ts          time.Duration
 	sample_rate int
@@ -29,8 +31,12 @@ type SegmentFunc func(time.Duration, []float32) error
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-// Create a new segmenter for "NumSamples" with a reader r
-// If NumSamples is zero then no segmenting is performed
+// Create a new segmenter for a specific "dur" duration of samples with
+// a reader r. If dur is zero then no segmenting is performed, the whole
+// audio file is read, which could cause some memory issues.
+// The sample rate is the number of samples per second.
+// At the moment, the audio format is auto-detected, but there should be
+// a way to specify the audio format.
 func New(r io.Reader, dur time.Duration, sample_rate int) (*Segmenter, error) {
 	segmenter := new(Segmenter)
 
@@ -75,9 +81,11 @@ func (s *Segmenter) Close() error {
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-// TODO: segments are output through a callback, with the samples and a timestamp
+// Segments are output through a callback, with the samples and a timestamp
 // TODO: we could do some basic silence and voice detection to segment to ensure
 // we don't overtax the CPU/GPU with silence and non-speech
+// TODO: We whould be able to select the audio stream to use. At the moment
+// the "best" audio stream is used, based on ffmpeg heuristic.
 func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 	// Check input parameters
 	if fn == nil {
@@ -129,7 +137,7 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 	return nil
 }
 
-// Return the duration from the file or timestamp
+// Return the file duration from the file or timestamp
 func (s *Segmenter) Duration() time.Duration {
 	if s.reader != nil {
 		return s.reader.Duration()

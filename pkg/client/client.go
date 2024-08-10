@@ -11,7 +11,7 @@ import (
 	"github.com/mutablelogic/go-client"
 	"github.com/mutablelogic/go-client/pkg/multipart"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	"github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
 ///////////////////////////////////////////////////////////////////////////////

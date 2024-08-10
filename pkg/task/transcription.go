@@ -8,7 +8,7 @@ import (
 	"time"
 
 	// Packages
-	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
+	"github.com/mutablelogic/go-whisper/pkg/schema"
 	"github.com/mutablelogic/go-whisper/sys/whisper"
 )
 

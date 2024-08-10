@@ -13,9 +13,9 @@ import (
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-whisper"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/schema"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/segmenter"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	"github.com/mutablelogic/go-whisper/pkg/schema"
+	"github.com/mutablelogic/go-whisper/pkg/segmenter"
+	"github.com/mutablelogic/go-whisper/pkg/task"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
