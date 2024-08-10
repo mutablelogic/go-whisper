@@ -14,8 +14,8 @@ import (
 	context "github.com/mutablelogic/go-server/pkg/context"
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
 	whisper "github.com/mutablelogic/go-whisper"
+	version "github.com/mutablelogic/go-whisper/pkg/version"
 	api "github.com/mutablelogic/go-whisper/pkg/whisper/api"
-	version "github.com/mutablelogic/go-whisper/pkg/whisper/version"
 )
 
 func main() {

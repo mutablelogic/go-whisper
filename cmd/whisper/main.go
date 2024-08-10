@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -26,9 +27,12 @@ type Globals struct {
 
 type CLI struct {
 	Globals
-	Models   ModelsCmd   `cmd:"models" help:"List models"`
-	Download DownloadCmd `cmd:"download" help:"Download a model"`
-	Server   ServerCmd   `cmd:"server" help:"Run the whisper server"`
+	Transcribe TranscribeCmd `cmd:"transcribe" help:"Transcribe from file"`
+	Models     ModelsCmd     `cmd:"models" help:"List models"`
+	Download   DownloadCmd   `cmd:"download" help:"Download a model"`
+	Delete     DeleteCmd     `cmd:"delete" help:"Delete a model"`
+	Server     ServerCmd     `cmd:"server" help:"Run the whisper service"`
+	Version    VersionCmd    `cmd:"version" help:"Print version information"`
 }
 
 func main() {
@@ -53,7 +57,11 @@ func main() {
 	)
 
 	// Create a whisper server - set options
-	opts := []whisper.Opt{}
+	opts := []whisper.Opt{
+		whisper.OptLog(func(line string) {
+			log.Println(line)
+		}),
+	}
 	if cli.Globals.Debug {
 		opts = append(opts, whisper.OptDebug())
 	}
