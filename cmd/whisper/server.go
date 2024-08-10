@@ -5,7 +5,7 @@ import (
 
 	// Packages
 	"github.com/mutablelogic/go-server/pkg/httpserver"
-	"github.com/mutablelogic/go-whisper/pkg/whisper/api"
+	"github.com/mutablelogic/go-whisper/pkg/api"
 )
 
 type ServerCmd struct {

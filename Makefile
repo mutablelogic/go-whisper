@@ -58,7 +58,9 @@ test: generate libwhisper libggml
 	@echo "Running tests (sys)"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./sys/whisper/...
 	@echo "Running tests (pkg)"
-	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./pkg/whisper/...
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./pkg/...
+	@echo "Running tests (whisper)"
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./
 
 # Build whisper-static-library
 libwhisper: submodule

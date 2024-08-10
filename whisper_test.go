@@ -9,7 +9,7 @@ import (
 	// Packages
 	wav "github.com/go-audio/wav"
 	whisper "github.com/mutablelogic/go-whisper"
-	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	task "github.com/mutablelogic/go-whisper/pkg/task"
 	assert "github.com/stretchr/testify/assert"
 
 	// Namespace imports
