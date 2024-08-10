@@ -16,11 +16,11 @@ BUILD_DIR := build
 
 # Build flags
 BUILD_MODULE := $(shell cat go.mod | head -1 | cut -d ' ' -f 2)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitSource=${BUILD_MODULE}
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitTag=$(shell git describe --tags --always)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitBranch=$(shell git name-rev HEAD --name-only --always)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GitHash=$(shell git rev-parse HEAD)
-BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/whisper/version.GoBuildTime=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitSource=${BUILD_MODULE}
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitTag=$(shell git describe --tags --always)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitBranch=$(shell git name-rev HEAD --name-only --always)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitHash=$(shell git rev-parse HEAD)
+BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GoBuildTime=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)" 
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
@@ -30,7 +30,7 @@ ifeq ($(GGML_CUDA),1)
 endif
 
 # Targets
-all: whisper
+all: whisper api
 
 # Generate the pkg-config files
 generate: mkdir go-tidy
@@ -42,6 +42,11 @@ whisper: mkdir generate go-tidy libwhisper libggml
 	@echo "Building whisper"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper ./cmd/whisper
 
+# Make api
+api: mkdir go-tidy
+	@echo "Building api"
+	@${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/api ./cmd/api
+
 # Build docker container
 docker: docker-dep submodule
 	@echo build docker image: ${BUILD_TAG} for ${OS}/${ARCH}
@@ -51,14 +56,16 @@ docker: docker-dep submodule
 		--build-arg OS=${OS} \
 		--build-arg SOURCE=${BUILD_MODULE} \
 		--build-arg VERSION=${VERSION} \
-		-f etc/Dockerfile.${OS}-${ARCH} .
+		-f etc/Dockerfile .
 
 # Test whisper bindings
 test: generate libwhisper libggml
 	@echo "Running tests (sys)"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./sys/whisper/...
 	@echo "Running tests (pkg)"
-	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./pkg/whisper/...
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./pkg/...
+	@echo "Running tests (whisper)"
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./
 
 # Build whisper-static-library
 libwhisper: submodule

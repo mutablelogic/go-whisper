@@ -2,7 +2,7 @@
 
 Speech-to-Text in golang. This is an early development version.
 
-* `cmd` contains an OpenAI-API compatible server
+* `cmd` contains an OpenAI-API compatible service
 * `pkg` contains the `whisper` service and client
 * `sys` contains the `whisper` bindings to the `whisper.cpp` library
 * `third_party` is a submodule for the whisper.cpp source
@@ -11,6 +11,7 @@ Speech-to-Text in golang. This is an early development version.
 
 (Note: Docker images are not created yet - this is some forward planning!)
 
+You can either run the whisper service as a CLI command or in a docker container.
 There are docker images for arm64 and amd64 (Intel). The arm64 image is built for
 Jetson GPU support specifically, but it will also run on Raspberry Pi's.
 
@@ -19,14 +20,15 @@ In order to utilize a NVIDIA GPU, you'll need to install the
 
 A docker volume should be created called "whisper" can be used for storing the Whisper language
 models. You can see which models are available to download locally [here](https://huggingface.co/ggerganov/whisper.cpp).
-The following command will run the server on port 8080:
+
+The following command will run the server on port 8080 for an NVIDIA GPU:
 
 ```bash
 docker run \
   --name whisper-server --rm \
   --runtime nvidia --gpus all \ # When using a NVIDIA GPU
   -v whisper:/models -p 8080:8080 -e WHISPER_DATA=/models \
-  ghcr.io/mutablelogic/go-whisper:latest
+  ghcr.io/mutablelogic/go-whisper
 ```
 
 If you include a `-debug` flag at the end, you'll get more verbose output. The API is then
@@ -91,6 +93,10 @@ The following `Makefile` targets can be used:
   in the `build` directory. Should work for amd64 and arm64 (Jetson) platforms
 
 See all the other targets in the `Makefile` for more information.
+
+## Developing
+
+TODO
 
 ## Status
 

@@ -10,10 +10,10 @@ import (
 
 	// Packages
 	ffmpeg "github.com/mutablelogic/go-media/pkg/ffmpeg"
-	model "github.com/mutablelogic/go-whisper/pkg/whisper/model"
-	pool "github.com/mutablelogic/go-whisper/pkg/whisper/pool"
-	schema "github.com/mutablelogic/go-whisper/pkg/whisper/schema"
-	task "github.com/mutablelogic/go-whisper/pkg/whisper/task"
+	pool "github.com/mutablelogic/go-whisper/pkg/pool"
+	schema "github.com/mutablelogic/go-whisper/pkg/schema"
+	store "github.com/mutablelogic/go-whisper/pkg/store"
+	task "github.com/mutablelogic/go-whisper/pkg/task"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
 	// Namespace imports
@@ -26,7 +26,7 @@ import (
 // Whisper represents a whisper service for running transcription and translation
 type Whisper struct {
 	pool  *pool.ContextPool
-	store *model.Store
+	store *store.Store
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -61,7 +61,7 @@ func New(path string, opt ...Opt) (*Whisper, error) {
 
 	// Create a new whisper service
 	w := new(Whisper)
-	if store, err := model.NewStore(path, extModel, defaultModelUrl); err != nil {
+	if store, err := store.NewStore(path, extModel, defaultModelUrl); err != nil {
 		return nil, err
 	} else {
 		w.store = store
@@ -112,7 +112,7 @@ func (w *Whisper) Close() error {
 
 func (w *Whisper) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Store *model.Store      `json:"store"`
+		Store *store.Store      `json:"store"`
 		Pool  *pool.ContextPool `json:"pool"`
 	}{
 		Store: w.store,
