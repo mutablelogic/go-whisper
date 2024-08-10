@@ -34,6 +34,8 @@ RUN make -j$(nproc)
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
+RUN apt-get -y update \
+ && apt-get -y install libavcodec libavdevice libavfilter libavutil libswscale libswresample
 COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin/whisper
 COPY --from=build /app/build/whisper /usr/local/bin/whisper
 COPY --chmod=755 etc/entrypoint.sh .
