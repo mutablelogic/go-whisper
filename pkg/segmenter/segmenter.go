@@ -31,13 +31,15 @@ type SegmentFunc func(time.Duration, []float32) error
 //////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-// Create a new segmenter for a specific "dur" duration of samples with
-// a reader r. If dur is zero then no segmenting is performed, the whole
+// Create a new segmenter with a reader r which segments raw audio of 'dur'
+// length. If dur is zero then no segmenting is performed, the whole
 // audio file is read, which could cause some memory issues.
+//
 // The sample rate is the number of samples per second.
+//
 // At the moment, the audio format is auto-detected, but there should be
 // a way to specify the audio format.
-func New(r io.Reader, dur time.Duration, sample_rate int) (*Segmenter, error) {
+func NewReader(r io.Reader, dur time.Duration, sample_rate int) (*Segmenter, error) {
 	segmenter := new(Segmenter)
 
 	// Check arguments
@@ -135,13 +137,4 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 
 	// Return success
 	return nil
-}
-
-// Return the file duration from the file or timestamp
-func (s *Segmenter) Duration() time.Duration {
-	if s.reader != nil {
-		return s.reader.Duration()
-	} else {
-		return s.ts + time.Duration(len(s.buf))*time.Second/time.Duration(s.sample_rate)
-	}
 }

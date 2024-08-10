@@ -36,7 +36,8 @@ func (cmd *TranscribeCmd) Run(ctx *Globals) error {
 	defer f.Close()
 
 	// Create a segmenter - read segments based on requested segment size
-	segmenter, err := segmenter.New(f, 0, whisper.SampleRate)
+	// TODO
+	segmenter, err := segmenter.NewReader(f, 0, whisper.SampleRate)
 	if err != nil {
 		return err
 	}

@@ -30,7 +30,7 @@ ifeq ($(GGML_CUDA),1)
 endif
 
 # Targets
-all: whisper
+all: whisper api
 
 # Generate the pkg-config files
 generate: mkdir go-tidy
@@ -41,6 +41,11 @@ generate: mkdir go-tidy
 whisper: mkdir generate go-tidy libwhisper libggml
 	@echo "Building whisper"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper ./cmd/whisper
+
+# Make api
+api: mkdir go-tidy
+	@echo "Building api"
+	@${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/api ./cmd/api
 
 # Build docker container
 docker: docker-dep submodule

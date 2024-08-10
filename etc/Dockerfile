@@ -1,4 +1,4 @@
-ARG BASE_TAG=0.0.10-4-g6421fd2
+ARG BASE_TAG=1.0.0
 ARG BASE_DEV_CONTAINER=ghcr.io/mutablelogic/cuda-dev:${BASE_TAG}
 ARG BASE_RUN_CONTAINER=ghcr.io/mutablelogic/cuda-rt:${BASE_TAG}
 ARG CUDA_DOCKER_ARCH=all
@@ -14,7 +14,7 @@ ARG ARCH
 ARG OS
 
 RUN apt-get -y update \
- && apt-get -y install software-properties-common curl libgomp1 \
+ && apt-get -y install software-properties-common curl \
  && add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6 \
  && apt-get -y update \
  && apt-get -y install libavformat-dev libavcodec-dev libavdevice-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
@@ -35,12 +35,12 @@ RUN make -j$(nproc)
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
 RUN apt-get -y update \
- && apt-get -y install software-properties-common libgomp1 \
+ && apt-get -y install software-properties-common \
  && add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg6 \
  && apt-get -y update \
  && apt-get -y install libavformat60 libavcodec60 libavdevice60 libavfilter9 libavutil58 libswscale7 libswresample4 
 COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin/whisper
-COPY --from=build /app/build/whisper /usr/local/bin/whisper
+COPY --from=build --chmod=755 /app/build/api /usr/local/bin/api
 COPY --chmod=755 etc/entrypoint.sh .
 
 # Entrypoint when running the server
