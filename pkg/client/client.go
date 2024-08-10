@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/url"
 	"os"
@@ -86,9 +87,28 @@ func (c *Client) DownloadModel(ctx context.Context, path string, fn func(status 
 		client.OptPath("models"),
 		client.OptQuery(query),
 		client.OptNoTimeout(),
-		client.OptJsonStreamCallback(func(v any) error {
-			if v, ok := v.(*resp); ok && fn != nil {
-				fn(v.Status, v.Completed, v.Total)
+		client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
+			switch evt.Event {
+			case "progress":
+				var r resp
+				if err := evt.Json(&r); err != nil {
+					return err
+				} else {
+					fn(r.Status, r.Completed, r.Total)
+				}
+			case "error":
+				var errstr string
+				if evt.Event == "error" {
+					if err := evt.Json(&errstr); err != nil {
+						return err
+					} else {
+						return errors.New(errstr)
+					}
+				}
+			case "ok":
+				if err := evt.Json(&r); err != nil {
+					return err
+				}
 			}
 			return nil
 		}),
