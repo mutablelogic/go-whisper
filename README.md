@@ -9,8 +9,6 @@ Speech-to-Text in golang. This is an early development version.
 
 ## Running
 
-(Note: Docker images are not created yet - this is some forward planning!)
-
 You can either run the whisper service as a CLI command or in a docker container.
 There are docker images for arm64 and amd64 (Intel). The arm64 image is built for
 Jetson GPU support specifically, but it will also run on Raspberry Pi's.
@@ -27,11 +25,11 @@ The following command will run the server on port 8080 for an NVIDIA GPU:
 docker run \
   --name whisper-server --rm \
   --runtime nvidia --gpus all \ # When using a NVIDIA GPU
-  -v whisper:/models -p 8080:8080 -e WHISPER_DATA=/models \
-  ghcr.io/mutablelogic/go-whisper
+  -v whisper:/data -p 8080:80 \
+  ghcr.io/mutablelogic/go-whisper:latest
 ```
 
-If you include a `-debug` flag at the end, you'll get more verbose output. The API is then
+The API is then
 available at `http://localhost:8080/v1` and it generally conforms to the
 [OpenAI API](https://platform.openai.com/docs/api-reference/audio) spec.
 
@@ -71,19 +69,19 @@ There's more information on the API [here](doc/API.md).
 
 ## Building
 
-If you are building a docker image, you just need Docker installed:
+If you are building a docker image, you just need make and docker installed:
 
 * `DOCKER_REGISTRY=docker.io/user make docker` - builds a docker container with the
   server binary, tagged to a specific registry
 
-If you want to build the server yourself for your specific combination of hardware,
-you can use the `Makefile` in the root directory and have the following dependencies
+If you want to build the server yourself for your specific combination of hardware (for example,
+on MacOS), you can use the `Makefile` in the root directory and have the following dependencies
 met:
 
 * Go 1.22
 * C++ compiler
 * FFmpeg 6.1 libraries (see [here](doc/build.md) for more information)
-* For CUDA, you'll need the CUDA toolkit including the `nvcc` compiler
+* For CUDA, you'll need the CUDA toolkit installed including the `nvcc` compiler
 
 The following `Makefile` targets can be used:
 

@@ -1,4 +1,4 @@
-ARG BASE_TAG=1.0.1
+ARG BASE_TAG=1.0.2
 ARG BASE_DEV_CONTAINER=ghcr.io/mutablelogic/cuda-dev:${BASE_TAG}
 ARG BASE_RUN_CONTAINER=ghcr.io/mutablelogic/cuda-rt:${BASE_TAG}
 ARG CUDA_DOCKER_ARCH=all
@@ -50,4 +50,4 @@ ENTRYPOINT [ "/entrypoint.sh" ]
 STOPSIGNAL SIGQUIT
 EXPOSE 80
 VOLUME [ "/data" ]
-CMD [ "/usr/local/bin/whisper", "--dir", "/data", "--listen", ":80", "--endpoint", "/api/v1", "server" ]
+CMD [ "/usr/local/bin/whisper", "server", "--dir", "/data", "--listen", ":80", "--endpoint", "/v1"  ]
