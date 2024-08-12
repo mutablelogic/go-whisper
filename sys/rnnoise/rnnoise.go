@@ -21,6 +21,11 @@ type (
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
+const (
+	// SampleRate expected by rnnoise
+	SampleRate = 48000
+)
+
 var (
 	ErrInvalidModel = errors.New("invalid model")
 )
