@@ -82,6 +82,7 @@ met:
 * C++ compiler
 * FFmpeg 6.1 libraries (see [here](doc/build.md) for more information)
 * For CUDA, you'll need the CUDA toolkit installed including the `nvcc` compiler
+* autoconf,  automake and libtool
 
 The following `Makefile` targets can be used:
 
@@ -107,8 +108,13 @@ __This module is currently in development and subject to change.__
 
 Please do file feature requests and bugs [here](https://github.com/mutablelogic/go-whisper/issues).
 The license is Apache 2 so feel free to redistribute. Redistributions in either source
-code or binary form must reproduce the copyright notice, and please link back to this
-repository for more information:
+code or binary form must reproduce the copyright notice.
+
+This software links to:
+
+* Static libraries of [whisper.cpp](https://github.com/ggerganov/whisper.cpp) licensed under
+the [MIT License](http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html).
+* Static libraries of [rnnoise](https://gitlab.xiph.org/xiph/rnnoise/).
 
 > __go-whisper__\
 > [https://github.com/mutablelogic/go-whisper/](https://github.com/mutablelogic/go-whisper/)\
@@ -117,6 +123,11 @@ repository for more information:
 > __whisper.cpp__\
 > [https://github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp)\
 > Copyright (c) 2023-2024 The ggml authors
-
-This software links to static libraries of [whisper.cpp](https://github.com/ggerganov/whisper.cpp) licensed under
-the [MIT License](http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html).
+>
+> __rnnoise__\
+> [https://gitlab.xiph.org/xiph/rnnoise/](https://gitlab.xiph.org/xiph/rnnoise/)\
+> Copyright (c) 2007-2017, 2024 Jean-Marc Valin\
+> Copyright (c) 2023 Amazon\
+> Copyright (c) 2017, Mozilla\
+> Copyright (c) 2005-2017, Xiph.Org Foundation\
+> Copyright (c) 2003-2004, Mark Borgerding

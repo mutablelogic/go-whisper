@@ -45,6 +45,9 @@ COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin/whisper
 COPY --from=build --chmod=755 /app/build/api /usr/local/bin/api
 COPY --chmod=755 etc/entrypoint.sh .
 
+# Label the image
+LABEL org.opencontainers.image.description="whisper.cpp audio translation and transcription service"
+
 # Entrypoint when running the server
 ENTRYPOINT [ "/entrypoint.sh" ]
 STOPSIGNAL SIGQUIT
