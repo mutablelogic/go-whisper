@@ -145,6 +145,12 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 // PRIVATE METHODS
 
 func (s *Segmenter) segment(fn SegmentFunc) error {
+	// Not segmenting
+	if s.n == 0 {
+		return fn(s.ts, s.buf)
+	}
+
+	// Split into n-sized segments
 	bufLength := len(s.buf)
 	ts := s.ts
 	tsinc := time.Duration(s.n) * time.Second / time.Duration(s.sample_rate)
@@ -165,5 +171,7 @@ func (s *Segmenter) segment(fn SegmentFunc) error {
 			ts += tsinc
 		}
 	}
+
+	// Return success
 	return nil
 }
