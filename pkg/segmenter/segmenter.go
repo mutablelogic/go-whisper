@@ -115,7 +115,7 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 
 		// n != 0 and len(buf) >= n we have a segment to process
 		if s.n != 0 && len(s.buf) >= s.n {
-			if err := fn(s.ts, s.buf); err != nil {
+			if err := s.segment(fn); err != nil {
 				return err
 			}
 			// Increment the timestamp
@@ -132,9 +132,38 @@ func (s *Segmenter) Decode(ctx context.Context, fn SegmentFunc) error {
 
 	// Output any remaining samples
 	if len(s.buf) > 0 {
-		fn(s.ts, s.buf)
+		if err := s.segment(fn); err != nil {
+			return err
+		}
 	}
 
 	// Return success
+	return nil
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
+
+func (s *Segmenter) segment(fn SegmentFunc) error {
+	bufLength := len(s.buf)
+	ts := s.ts
+	tsinc := time.Duration(s.n) * time.Second / time.Duration(s.sample_rate)
+	for i := 0; i < bufLength; i += s.n {
+		end := i + s.n
+		var segment []float32
+		if end <= bufLength {
+			// If the segment fits exactly or there are enough items
+			segment = s.buf[i:end]
+		} else {
+			// If the segment is smaller than segmentSize, pad with zeros
+			segment = make([]float32, s.n)
+			copy(segment, s.buf[i:bufLength])
+		}
+		if err := fn(ts, segment); err != nil {
+			return err
+		} else {
+			ts += tsinc
+		}
+	}
 	return nil
 }

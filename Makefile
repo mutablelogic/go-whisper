@@ -36,6 +36,7 @@ all: whisper api
 generate: mkdir go-tidy
 	@echo "Generating pkg-config"
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} go generate ./sys/whisper
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} go generate ./sys/rnnoise
 
 # Make whisper
 whisper: mkdir generate go-tidy libwhisper libggml
@@ -43,14 +44,15 @@ whisper: mkdir generate go-tidy libwhisper libggml
 	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper ./cmd/whisper
 
 # Make rnnoise
-rnnoise: mkdir submodule
+rnnoise: mkdir submodule generate
 	@echo "Building rnnoise"
-	cd third_party/rnnoise && ./autogen.sh && ./configure --prefix=${ROOT_PATH}/${BUILD_DIR} && make -j$(nproc) && make install
+	cd third_party/rnnoise && make -j$(nproc) rnnoise
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/rnnoise ./cmd/rnnoise
 
 # Make rnnoise
 rnnoise-test: rnnoise
 	@echo "Testing rnnoise"
-	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR}/lib/pkgconfig go test -v ./sys/rnnoise/...
+	@PKG_CONFIG_PATH=${ROOT_PATH}/${BUILD_DIR} ${GO} test -v ./sys/rnnoise/...
 
 # Make api
 api: mkdir go-tidy
