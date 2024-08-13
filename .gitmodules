@@ -3,6 +3,3 @@
 	url = https://github.com/ggerganov/whisper.cpp
 	branch = HEAD
 
-[submodule "third_party/rnnoise"]
-	path = third_party/rnnoise
-	url = https://gitlab.xiph.org/xiph/rnnoise
