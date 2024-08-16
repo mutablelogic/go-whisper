@@ -28,6 +28,8 @@ github.com/mutablelogic/go-client v1.0.9 h1:Eh4sjQOFDldP/L3IizqkcOD3WigZR+u1VaHT
 github.com/mutablelogic/go-client v1.0.9/go.mod h1:VLyB8j8IBJSK/FXvvqhmq93PRWDKkyLu8R7V2Vudb6A=
 github.com/mutablelogic/go-media v1.6.12 h1:+FaqSz6GpQduF4KEDdYMxTCdtkJFOOaMJ/4wd3L59wI=
 github.com/mutablelogic/go-media v1.6.12/go.mod h1:HulNT0yyH63a3FRlbuzNDakhOypYrmtFVkHEXZjDgAY=
+github.com/mutablelogic/go-media v1.6.13 h1:sfTTcXUbr0jxB9Ib1C6KVs8nhJowpxk3gu39LDkGF0Q=
+github.com/mutablelogic/go-media v1.6.13/go.mod h1:HulNT0yyH63a3FRlbuzNDakhOypYrmtFVkHEXZjDgAY=
 github.com/mutablelogic/go-server v1.4.15 h1:jOvVdDmVK+PGCMBAk5atKHVonnccwy/b4dWwWFAOTso=
 github.com/mutablelogic/go-server v1.4.15/go.mod h1:9nenPAohKu8bFoRgwHJh+3s8h0kLFjUAb8KZvT1TQNU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
