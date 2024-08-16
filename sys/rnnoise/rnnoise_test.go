@@ -34,9 +34,39 @@ func Test_rnnoise_003(t *testing.T) {
 
 	samples := make([]float32, rnnoise.Rnnoise_get_frame_size())
 	for i := 0; i < 10; i++ {
-		prob := rnnoise.Rnnoise_process_frame(state, samples, samples)
+		prob := rnnoise.Rnnoise_process_frame(state, samples)
 		t.Log(prob)
 	}
+}
+
+func Test_rnnoise_004(t *testing.T) {
+	state, err := rnnoise.Rnnoise_create(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		rnnoise.Rnnoise_destroy(state)
+	})
+
+	samples, err := LoadSamples(SAMPLE_EN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := 0
+	frame_size := rnnoise.Rnnoise_get_frame_size()
+	for {
+		if i >= len(samples) {
+			break
+		}
+		data := samples[i:min(i+frame_size, len(samples))]
+		if len(data) < frame_size {
+			data = append(data, make([]float32, frame_size-len(data))...)
+		}
+		prob := rnnoise.Rnnoise_process_frame(state, data)
+		t.Log(prob)
+		i += len(data)
+	}
+
 }
 
 //////////////////////////////////////////////////////////////////////////////

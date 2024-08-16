@@ -11,7 +11,7 @@ import (
 	assert "github.com/stretchr/testify/assert"
 )
 
-const SAMPLE = "../../samples/OlivierL.wav"
+const SAMPLE = "../../samples/noise_reference.mp3"
 
 func Test_segmenter_001(t *testing.T) {
 	assert := assert.New(t)
@@ -20,7 +20,7 @@ func Test_segmenter_001(t *testing.T) {
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
-	segmenter, err := segmenter.New(f, 200*time.Millisecond, 16000)
+	segmenter, err := segmenter.NewReader(f, 200*time.Millisecond, 16000)
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
@@ -41,7 +41,7 @@ func Test_segmenter_002(t *testing.T) {
 	}
 
 	// No segmentation, just output the audio
-	segmenter, err := segmenter.New(f, 0, 16000)
+	segmenter, err := segmenter.NewReader(f, 0, 16000)
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}

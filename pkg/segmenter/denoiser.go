@@ -70,8 +70,6 @@ func (d *Denoiser) Decode(ctx context.Context, fn DenoiseFunc) error {
 		return errors.New("no function specified")
 	}
 	return d.segmenter.Decode(ctx, func(ts time.Duration, data []float32) error {
-		prob := rnnoise.Rnnoise_process_frame(d.denoiser, data, data)
-		// TODO: for a frame with silence attached, curtail to remove the padded silence.
-		return fn(ts, prob, data)
+		return fn(ts, rnnoise.Rnnoise_process_frame(d.denoiser, data), data)
 	})
 }

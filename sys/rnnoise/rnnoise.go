@@ -73,6 +73,13 @@ func Rnnoise_destroy(state *DenoiseState) {
 // Denoise a frame of samples
 // in and out must be at least rnnoise_get_frame_size() large (in samples, not bytes)
 // Returns the speech probability of the frame (VAD probability)
-func Rnnoise_process_frame(state *DenoiseState, out, in []float32) float32 {
-	return float32(C.rnnoise_process_frame((*C.DenoiseState)(state), (*C.float)(&out[0]), (*C.float)(&in[0])))
+func Rnnoise_process_frame(state *DenoiseState, data []float32) float32 {
+	for i := 0; i < len(data); i++ {
+		data[i] *= 32768
+	}
+	p := float32(C.rnnoise_process_frame((*C.DenoiseState)(state), (*C.float)(&data[0]), (*C.float)(&data[0])))
+	for i := 0; i < len(data); i++ {
+		data[i] /= 32768
+	}
+	return p
 }
