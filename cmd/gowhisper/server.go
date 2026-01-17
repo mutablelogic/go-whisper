@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 
 	// Packages
@@ -58,9 +59,9 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 		if dir := os.Getenv("WHISPER_DIR"); dir != "" {
 			modelsPath = dir
 		} else if dir, err := os.UserCacheDir(); err == nil {
-			modelsPath = dir + "/gowhisper"
+			modelsPath = filepath.Join(dir, "gowhisper")
 		} else {
-			modelsPath = os.TempDir() + "/gowhisper"
+			modelsPath = filepath.Join(os.TempDir(), "gowhisper")
 		}
 	}
 

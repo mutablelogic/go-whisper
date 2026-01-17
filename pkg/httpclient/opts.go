@@ -44,11 +44,12 @@ func WithPrompt(prompt string) Opt {
 	}
 }
 
-// WithTemperature sets the sampling temperature (0-1) for transcription.
+// WithTemperature sets the sampling temperature for transcription.
+// Valid range is [0, 1] inclusive, where 0 is deterministic and 1 is most random.
 func WithTemperature(temperature float64) Opt {
 	return func(o *opt) error {
 		if temperature < 0 || temperature > 1 {
-			return fmt.Errorf("temperature must be between 0 and 1")
+			return fmt.Errorf("temperature must be between 0 and 1 (inclusive)")
 		}
 		o.Temperature = &temperature
 		return nil

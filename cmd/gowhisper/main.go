@@ -180,10 +180,3 @@ func isTerminal(w io.Writer) bool {
 	}
 	return false
 }
-
-// StartSpan starts a new OTEL span if a tracer is configured.
-// Returns the context (with span if available) and an end function that records
-// any error and ends the span. Use with: defer func() { endSpan(err) }()
-func (g *Globals) StartSpan(name string) (context.Context, func(error)) {
-	return otel.StartSpan(g.tracer, g.ctx, name)
-}
