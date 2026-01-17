@@ -15,6 +15,7 @@ type TranslateRequest struct {
 	Temperature *float64 `json:"temperature,omitempty" help:"Sampling temperature (0-1)"`
 	Stream      *bool    `json:"stream,omitempty" help:"Enable streaming response"`
 	Diarize     *bool    `json:"diarize,omitempty" help:"Identify and separate speakers"`
+	Filename    *string  `json:"filename,omitempty" help:"Optional filename with extension for the audio file"`
 }
 
 // TranscribeRequest represents a request to transcribe audio

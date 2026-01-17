@@ -339,13 +339,19 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema
 		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
 	}
 
+	// Determine filename with extension (default to .wav if not provided)
+	filename := "audio.wav"
+	if req.Filename != nil && *req.Filename != "" {
+		filename = *req.Filename
+	}
+
 	// Create OpenAI transcription request
 	openaiReq := openai.TranscriptionRequest{
 		TranslationRequest: openai.TranslationRequest{
 			Model: model.Id,
 			File: multipart.File{
 				Body: r,
-				Path: "audio",
+				Path: filename,
 			},
 			Prompt:      req.Prompt,
 			Format:      nil,
@@ -372,12 +378,18 @@ func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.
 		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
 	}
 
+	// Determine filename with extension (default to .wav if not provided)
+	filename := "audio.wav"
+	if req.Filename != nil && *req.Filename != "" {
+		filename = *req.Filename
+	}
+
 	// Create OpenAI translation request
 	openaiReq := openai.TranslationRequest{
 		Model: model.Id,
 		File: multipart.File{
 			Body: r,
-			Path: "audio",
+			Path: filename,
 		},
 		Prompt:      req.Prompt,
 		Format:      nil,

@@ -379,9 +379,11 @@ func TestManager_Transcribe_OpenAI_Integration(t *testing.T) {
 	defer file.Close()
 
 	// Transcribe with OpenAI
+	filename := "en-office.mp3"
 	req := &schema.TranscribeRequest{
 		TranslateRequest: schema.TranslateRequest{
-			Model: "whisper-1",
+			Model:    "whisper-1",
+			Filename: &filename,
 		},
 	}
 	result, err := manager.Transcribe(context.Background(), file, req)
@@ -420,8 +422,10 @@ func TestManager_Translate_OpenAI_Integration(t *testing.T) {
 	defer file.Close()
 
 	// Translate with OpenAI
+	filename := "OlivierL.wav"
 	req := &schema.TranslateRequest{
-		Model: "whisper-1",
+		Model:    "whisper-1",
+		Filename: &filename,
 	}
 	result, err := manager.Translate(context.Background(), file, req)
 	if err != nil {
