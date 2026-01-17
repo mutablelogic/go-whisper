@@ -11,7 +11,7 @@ import (
 	"time"
 
 	// Packages
-	"github.com/mutablelogic/go-media/pkg/segmenter"
+	segmenterPkg "github.com/mutablelogic/go-media/pkg/segmenter"
 	"github.com/mutablelogic/go-server/pkg/httprequest"
 	"github.com/mutablelogic/go-server/pkg/httpresponse"
 	"github.com/mutablelogic/go-server/pkg/types"
@@ -19,7 +19,7 @@ import (
 	"github.com/mutablelogic/go-whisper/pkg/client/gowhisper"
 	"github.com/mutablelogic/go-whisper/pkg/client/openai"
 	"github.com/mutablelogic/go-whisper/pkg/schema"
-	"github.com/mutablelogic/go-whisper/pkg/task"
+	whisperPkg "github.com/mutablelogic/go-whisper/pkg/whisper"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -84,43 +84,43 @@ func transcribe_file(ctx context.Context, service *whisper.Whisper, w http.Respo
 
 	// Start a translation task
 	var result *schema.Transcription
-	if err := service.WithModel(model_, func(taskctx *task.Context) error {
-		taskctx.SetTranslate(translate)
-		taskctx.SetDiarize(diarize)
+	if err := service.WithModel(model_, func(task *whisperPkg.Task) error {
+		task.SetTranslate(translate)
+		task.SetDiarize(diarize)
 
 		// Set language
 		if language != "" {
-			if err := taskctx.SetLanguage(language); err != nil {
+			if err := task.SetLanguage(language); err != nil {
 				return err
 			}
 		}
 
 		// Set temperature
 		if temperature != nil {
-			if err := taskctx.SetTemperature(types.PtrFloat64(temperature)); err != nil {
+			if err := task.SetTemperature(types.PtrFloat64(temperature)); err != nil {
 				return err
 			}
 		}
 
 		// Set prompt
 		if prompt = strings.TrimSpace(prompt); prompt != "" {
-			if err := taskctx.SetPrompt(prompt); err != nil {
+			if err := task.SetPrompt(prompt); err != nil {
 				return err
 			}
 		}
 
 		// Set response
-		result = taskctx.Result()
+		result = task.Result()
 
 		// Decode, resample and segment the audio file
-		return segment(ctx, taskctx, r, func(seg *schema.Segment) {
+		return segment(ctx, task, r, func(seg *schema.Segment) {
 			if stream == nil {
 				return
 			}
 
 			// If the language has changed, write a language event
-			if language != taskctx.Language() {
-				language = taskctx.Language()
+			if language != task.Language() {
+				language = task.Language()
 				stream.Write(schema.TranscribeStreamLanguageType, schema.Event{
 					Type: schema.TranscribeStreamLanguageType,
 					Text: language,
@@ -171,16 +171,16 @@ func transcribe_file(ctx context.Context, service *whisper.Whisper, w http.Respo
 	}
 }
 
-func segment(ctx context.Context, taskctx *task.Context, r io.Reader, fn func(seg *schema.Segment)) error {
+func segment(ctx context.Context, task *whisperPkg.Task, r io.Reader, fn func(seg *schema.Segment)) error {
 	// Create a segmenter
-	segmenter, err := segmenter.NewReader(r, whisper.SampleRate)
+	segmenter, err := segmenterPkg.NewFromReader(r, whisper.SampleRate)
 	if err != nil {
 		return err
 	}
 
 	// Read segments and perform transcription or  translation
 	if err := segmenter.DecodeFloat32(ctx, func(ts time.Duration, buf []float32) error {
-		return taskctx.Transcribe(ctx, ts, buf, fn)
+		return task.Transcribe(ctx, ts, buf, fn)
 	}); err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func response(w http.ResponseWriter, format string, response *schema.Transcripti
 	case openai.FormatSrt:
 		return httpresponse.Write(w, http.StatusOK, "application/x-subrip", func(w io.Writer) (int, error) {
 			for _, seg := range response.Segments {
-				task.WriteSegmentSrt(w, seg)
+				whisperPkg.WriteSegmentSrt(w, seg)
 			}
 			return 0, nil
 		})
@@ -210,7 +210,7 @@ func response(w http.ResponseWriter, format string, response *schema.Transcripti
 				return 0, err
 			}
 			for _, seg := range response.Segments {
-				task.WriteSegmentVtt(w, seg)
+				whisperPkg.WriteSegmentVtt(w, seg)
 			}
 			return 0, nil
 		})

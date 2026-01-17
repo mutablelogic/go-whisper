@@ -8,14 +8,14 @@ import (
 
 	// Packages
 	goclient "github.com/mutablelogic/go-client"
-	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	segmenterPkg "github.com/mutablelogic/go-media/pkg/segmenter"
 	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	whisper "github.com/mutablelogic/go-whisper"
 	client "github.com/mutablelogic/go-whisper/pkg/client"
 	openai "github.com/mutablelogic/go-whisper/pkg/client/openai"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
-	task "github.com/mutablelogic/go-whisper/pkg/task"
+	whisperPkg "github.com/mutablelogic/go-whisper/pkg/whisper"
 	wav "github.com/mutablelogic/go-whisper/pkg/wav"
 )
 
@@ -74,60 +74,60 @@ func (cmd *TranslateCmd) run_local(app *Globals, translate bool) error {
 	defer f.Close()
 
 	// Create a segmenter - read segments based on requested segment size
-	opts := []segmenter.Opt{}
+	opts := []segmenterPkg.Opt{}
 	if cmd.Segments > 0 {
-		opts = append(opts, segmenter.WithSegmentSize(cmd.Segments))
+		opts = append(opts, segmenterPkg.WithSegmentSize(cmd.Segments))
 	}
-	segmenter, err := segmenter.NewReader(f, whisper.SampleRate, opts...)
+	segmenter, err := segmenterPkg.NewFromReader(f, whisper.SampleRate, opts...)
 	if err != nil {
 		return err
 	}
-	defer segmenter.Close()
+	defer segmenterPkg.Close()
 
 	// Perform the transcription
-	return app.service.WithModel(model_, func(taskctx *task.Context) error {
+	return app.service.WithModel(model_, func(task *whisperPkg.Task) error {
 		// Transcribe or Translate
-		taskctx.SetTranslate(translate)
-		taskctx.SetDiarize(cmd.Diarize)
+		task.SetTranslate(translate)
+		task.SetDiarize(cmd.Diarize)
 
 		// Set language
 		if cmd.Language != "" {
-			if err := taskctx.SetLanguage(cmd.Language); err != nil {
+			if err := task.SetLanguage(cmd.Language); err != nil {
 				return err
 			}
 		}
 		// Set temperature
 		if cmd.Temperature != nil {
-			if err := taskctx.SetTemperature(*cmd.Temperature); err != nil {
+			if err := task.SetTemperature(*cmd.Temperature); err != nil {
 				return err
 			}
 		}
 		// Set prompt
 		if cmd.Prompt != nil {
-			if err := taskctx.SetPrompt(*cmd.Prompt); err != nil {
+			if err := task.SetPrompt(*cmd.Prompt); err != nil {
 				return err
 			}
 		}
 
 		// Read samples and transcribe them
-		if err := segmenter.DecodeFloat32(app.ctx, func(ts time.Duration, buf []float32) error {
+		if err := segmenterPkg.DecodeFloat32(app.ctx, func(ts time.Duration, buf []float32) error {
 			// Perform the transcription, return any errors
-			return taskctx.Transcribe(app.ctx, ts, buf, func(segment *schema.Segment) {
+			return task.Transcribe(app.ctx, ts, buf, func(segment *schema.Segment) {
 				var buf bytes.Buffer
 				switch cmd.Format {
 				case "json", "verbose_json":
 					fmt.Println(segment)
 				case "srt":
-					task.WriteSegmentSrt(&buf, segment)
+					whisperPkg.WriteSegmentSrt(&buf, segment)
 					fmt.Println(buf.String())
 				case "vtt":
 					if segment.Id == 0 {
 						fmt.Println("WEBVTT" + "\n")
 					}
-					task.WriteSegmentVtt(&buf, segment)
+					whisperPkg.WriteSegmentVtt(&buf, segment)
 					fmt.Println(buf.String())
 				case "text":
-					task.WriteSegmentText(&buf, segment)
+					whisperPkg.WriteSegmentText(&buf, segment)
 					fmt.Println(buf.String())
 				}
 			})
@@ -180,15 +180,15 @@ func (cmd *TranslateCmd) run_remote(app *Globals, translate bool) error {
 	}
 
 	// Create a segmenter - read segments based on requested segment size
-	sopts := []segmenter.Opt{}
+	sopts := []segmenterPkg.Opt{}
 	if cmd.Segments > 0 {
-		sopts = append(sopts, segmenter.WithSegmentSize(cmd.Segments))
+		sopts = append(sopts, segmenterPkg.WithSegmentSize(cmd.Segments))
 	}
 	if cmd.Silence > 0 {
-		sopts = append(sopts, segmenter.WithDefaultSilenceThreshold())
-		sopts = append(sopts, segmenter.WithSilenceSize(cmd.Silence))
+		sopts = append(sopts, segmenterPkg.WithDefaultSilence())
+		sopts = append(sopts, segmenterPkg.WithSilenceSize(cmd.Silence))
 	}
-	splitter, err := segmenter.NewReader(f, whisper.SampleRate, sopts...)
+	splitter, err := segmenterPkg.NewFromReader(f, whisper.SampleRate, sopts...)
 	if err != nil {
 		return err
 	}

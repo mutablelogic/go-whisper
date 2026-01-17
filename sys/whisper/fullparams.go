@@ -2,7 +2,6 @@ package whisper
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"unsafe"
 )
@@ -298,7 +297,6 @@ func (c *FullParams) Language() string {
 }
 
 func (c *FullParams) SetTemperature(v float32) {
-	fmt.Println("Setting temperature to:", v)
 	c.temperature = (C.float)(v)
 }
 
@@ -307,7 +305,11 @@ func (c *FullParams) Temperature() float32 {
 }
 
 func (c *FullParams) SetPrompt(v string) {
-	// Note: C.CString requires a C.free call later, but we don't do it here
+	// Free old prompt if it exists
+	if c.initial_prompt != nil {
+		C.free(unsafe.Pointer(c.initial_prompt))
+	}
+	// Allocate new prompt
 	c.initial_prompt = C.CString(v)
 }
 
@@ -374,4 +376,11 @@ func whisper_abort_cb_ex(user_data unsafe.Pointer) C.bool {
 		return C.bool(cb())
 	}
 	return C.bool(false)
+}
+
+// CleanupAllCallbacks clears all callbacks from global maps
+func CleanupAllCallbacks() {
+	progressCb = make(map[uint]ProgressCallback)
+	segmentCb = make(map[uint]SegmentCallback)
+	abortCb = make(map[uint]AbortCallback)
 }

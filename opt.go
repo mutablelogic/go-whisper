@@ -1,57 +1,23 @@
 package whisper
 
 import (
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
+	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
-type opts struct {
-	MaxConcurrent int
-	logfn         LogFn
-	debug         bool
-	gpu           int
-}
-
-type Opt func(*opts) error
-type LogFn func(string)
+// Re-export types from pkg/whisper
+type Opt = whisper.Opt
+type LogFn = whisper.LogFn
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-// Set maximum number of concurrent tasks
-func OptMaxConcurrent(v int) Opt {
-	return func(o *opts) error {
-		if v < 1 {
-			return ErrBadParameter.With("max concurrent must be greater than zero")
-		}
-		o.MaxConcurrent = v
-		return nil
-	}
-}
-
-// Set logging function
-func OptLog(fn LogFn) Opt {
-	return func(o *opts) error {
-		o.logfn = fn
-		return nil
-	}
-}
-
-// Set debugging
-func OptDebug() Opt {
-	return func(o *opts) error {
-		o.debug = true
-		return nil
-	}
-}
-
-// Disable GPU acceleration
-func OptNoGPU() Opt {
-	return func(o *opts) error {
-		o.gpu = -1
-		return nil
-	}
-}
+// Re-export option functions from pkg/whisper
+var (
+	OptMaxConcurrent = whisper.OptMaxConcurrent
+	OptLog           = whisper.OptLog
+	OptDebug         = whisper.OptDebug
+	OptNoGPU         = whisper.OptNoGPU
+)

@@ -66,14 +66,19 @@ api: mkdir go-tidy
 	@echo "Building api"
 	@${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/api ./cmd/api
 
-# Test whisper bindings
-test: generate libwhisper
-	@echo "Running tests (sys) with ${PREFIX}/lib"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib ${GO} test ${TEST_FLAGS} ./sys/whisper/...
+# Test whisper
+test: test-sys test-pkg
+
+# Test whisper pkg bindings
+test-pkg: generate libwhisper libffmpeg
 	@echo "Running tests (pkg)"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib ${GO} test ${TEST_FLAGS} ./pkg/...
-	@echo "Running tests (whisper)"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib ${GO} test ${TEST_FLAGS} ./
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./pkg/whisper/...
+
+# Test whisper bindings
+test-sys: generate libwhisper
+	@echo "Running tests (sys) with ${PREFIX}/lib"
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./sys/whisper/...
+
 
 # make libwhisper and install at ${PREFIX}
 libwhisper: mkdir submodule cmake-dep 
@@ -88,6 +93,8 @@ libffmpeg: mkdir submodule
 	@mkdir -p ${BUILD_DIR}
 	@mkdir -p ${PREFIX}
 	@BUILD_DIR=$(shell realpath ${BUILD_DIR}) PREFIX=$(shell realpath ${PREFIX}) make -C third_party/go-media ffmpeg
+	@echo "TODO Fixing libavfilter.pc (removing -D_THREAD_SAFE from Libs)"
+	@sed -i '' 's/ -D_THREAD_SAFE//g' ${PREFIX}/lib/pkgconfig/libavfilter.pc || true
 
 # Build docker container
 docker: docker-dep submodule
@@ -117,13 +124,11 @@ submodule: git-dep
 	@echo "Checking out submodules"
 	@${GIT} submodule update --init --recursive --remote
 
-# Submodule clean
+# Submodule clean (ONLY cleans submodules, not main repo)
 submodule-clean: git-dep
-	@echo "Cleaning submodules"
-	@${GIT} reset --hard
+	@echo "Cleaning submodules only"
 	@${GIT} submodule sync --recursive
 	@${GIT} submodule update --init --force --recursive
-	@${GIT} clean -ffdx
 	@${GIT} submodule foreach --recursive git clean -ffdx	
 
 # Check for docker
@@ -155,7 +160,8 @@ go-tidy: go-dep
 	@${GO} mod tidy
 	@${GO} clean -cache
 
-# Clean
-clean: submodule-clean go-tidy
-	@echo "Cleaning"
+# Clean - only removes build artifacts, does NOT reset git or clean submodules
+clean:
+	@echo "Cleaning build artifacts"
 	@rm -rf ${BUILD_DIR}
+	@${GO} clean -cache
