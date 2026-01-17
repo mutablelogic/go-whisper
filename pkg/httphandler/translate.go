@@ -47,6 +47,6 @@ func translateCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manage
 		return httpresponse.Error(w, httperr(err))
 	}
 
-	// Return the response
-	return httpresponse.JSON(w, http.StatusOK, httprequest.Indent(r), result)
+	// Return response based on Accept header
+	return writeTranscriptionResponse(w, r, result)
 }

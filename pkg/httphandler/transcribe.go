@@ -47,6 +47,45 @@ func transcribeCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manag
 		return httpresponse.Error(w, httperr(err))
 	}
 
-	// Return the response
-	return httpresponse.JSON(w, http.StatusOK, httprequest.Indent(r), result)
+	// Return response based on Accept header
+	return writeTranscriptionResponse(w, r, result)
+}
+
+// writeTranscriptionResponse writes transcription result in the requested format
+func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, result *schema.Transcription) error {
+	acceptHeader := r.Header.Get("Accept")
+
+	// Determine response format based on Accept header
+	switch {
+	case acceptHeader == "text/plain":
+		// Return plain text
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(result.Text))
+		return err
+	case acceptHeader == "application/x-subrip" || acceptHeader == "text/subrip" || acceptHeader == "text/srt":
+		// Return SRT format
+		w.Header().Set("Content-Type", "application/x-subrip")
+		w.WriteHeader(http.StatusOK)
+		for _, seg := range result.Segments {
+			if seg != nil {
+				seg.WriteSRT(w, 0)
+			}
+		}
+		return nil
+	case acceptHeader == "text/vtt" || acceptHeader == "application/vtt":
+		// Return VTT format
+		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("WEBVTT\n\n"))
+		for _, seg := range result.Segments {
+			if seg != nil {
+				seg.WriteVTT(w, 0)
+			}
+		}
+		return nil
+	default:
+		// Default to JSON
+		return httpresponse.JSON(w, http.StatusOK, httprequest.Indent(r), result)
+	}
 }
