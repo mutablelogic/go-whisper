@@ -5,6 +5,7 @@ import (
 
 	// Packages
 	goclient "github.com/mutablelogic/go-client"
+	"go.opentelemetry.io/otel/trace"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -17,6 +18,7 @@ type opts struct {
 	elevenLabsKey string
 	openAIKey     string
 	clientOpts    []goclient.ClientOpt
+	tracer        trace.Tracer
 }
 
 type Opt func(*opts) error
@@ -63,4 +65,16 @@ func OptClientOpts(clientOpts ...goclient.ClientOpt) Opt {
 // ElevenLabs and OpenAI requests.
 func OptClientTimeout(d time.Duration) Opt {
 	return OptClientOpts(goclient.OptTimeout(d))
+}
+
+// OptTracer sets the OpenTelemetry tracer for distributed tracing of
+// transcription, translation, and model operations across all providers.
+func OptTracer(tracer trace.Tracer) Opt {
+	return func(o *opts) error {
+		if tracer == nil {
+			return ErrBadParameter.With("tracer is nil")
+		}
+		o.tracer = tracer
+		return nil
+	}
 }

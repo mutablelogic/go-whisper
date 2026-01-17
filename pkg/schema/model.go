@@ -1,9 +1,5 @@
 package schema
 
-import (
-	"encoding/json"
-)
-
 //////////////////////////////////////////////////////////////////////////////
 // TYPES
 
@@ -19,9 +15,5 @@ type Model struct {
 // STRINGIFY
 
 func (m *Model) String() string {
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
+	return stringify(*m)
 }

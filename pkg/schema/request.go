@@ -1,5 +1,10 @@
 package schema
 
+import (
+	// Packages
+	gomultipart "github.com/mutablelogic/go-client/pkg/multipart"
+)
+
 //////////////////////////////////////////////////////////////////////////////
 // TYPES
 
@@ -16,4 +21,36 @@ type TranslateRequest struct {
 type TranscribeRequest struct {
 	TranslateRequest
 	Language *string `json:"language,omitempty" help:"Language of the audio (two-letter code)"`
+}
+
+// DownloadModelRequest represents a request to download a model
+type DownloadModelRequest struct {
+	Model string `json:"model" help:"Model ID to download"`
+}
+
+// TranslateMultipartRequest wraps TranslateRequest with an audio file for multipart form handling
+type TranslateMultipartRequest struct {
+	TranslateRequest
+	Audio gomultipart.File `json:"audio"`
+}
+
+// TranscribeMultipartRequest wraps TranscribeRequest with an audio file for multipart form handling
+type TranscribeMultipartRequest struct {
+	TranscribeRequest
+	Audio gomultipart.File `json:"audio"`
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// STRINGIFY
+
+func (r *TranslateRequest) String() string {
+	return stringify(*r)
+}
+
+func (r *TranscribeRequest) String() string {
+	return stringify(*r)
+}
+
+func (r *DownloadModelRequest) String() string {
+	return stringify(*r)
 }

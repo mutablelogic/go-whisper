@@ -8,7 +8,7 @@ import (
 
 	// Packages
 	pkg "github.com/mutablelogic/go-whisper/pkg"
-	"github.com/mutablelogic/go-whisper/pkg/schema"
+	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 )
 
@@ -27,7 +27,7 @@ func TestManager_New(t *testing.T) {
 	defer manager.Close()
 
 	// Verify ListModels works and returns a slice
-	models := manager.ListModels()
+	models := manager.ListModels(context.Background())
 	if models == nil {
 		t.Error("expected non-nil models slice from ListModels()")
 	}
@@ -45,7 +45,7 @@ func TestManager_NewWithElevenLabsKey(t *testing.T) {
 	defer manager.Close()
 
 	// Verify ListModels includes both whisper and elevenlabs models
-	models := manager.ListModels()
+	models := manager.ListModels(context.Background())
 	hasElevenLabs := false
 	for _, model := range models {
 		if model.OwnedBy == "elevenlabs" {
@@ -70,7 +70,7 @@ func TestManager_NewWithOpenAIKey(t *testing.T) {
 	defer manager.Close()
 
 	// Verify ListModels includes both whisper and openai models
-	models := manager.ListModels()
+	models := manager.ListModels(context.Background())
 	hasOpenAI := false
 	for _, model := range models {
 		if model.OwnedBy == "openai" {
@@ -98,7 +98,7 @@ func TestManager_NewWithAllKeys(t *testing.T) {
 	defer manager.Close()
 
 	// Verify ListModels includes models from all three sources
-	models := manager.ListModels()
+	models := manager.ListModels(context.Background())
 	hasElevenLabs := false
 	hasOpenAI := false
 	for _, model := range models {
@@ -162,46 +162,6 @@ func TestManager_Close(t *testing.T) {
 
 ///////////////////////////////////////////////////////////////////////////////
 // TESTS FOR MANAGER METHODS
-
-func TestManager_ListModels_NoWhisper(t *testing.T) {
-	m := &pkg.Manager{}
-	models := m.ListModels()
-	if models != nil && len(models) > 0 {
-		t.Errorf("expected empty models, got %d", len(models))
-	}
-}
-
-func TestManager_DownloadModel_NoWhisper(t *testing.T) {
-	m := &pkg.Manager{}
-	_, err := m.DownloadModel(context.Background(), "test.bin", nil)
-	if err == nil {
-		t.Error("expected error when whisper manager not initialized")
-	}
-}
-
-func TestManager_DeleteModel_NoWhisper(t *testing.T) {
-	m := &pkg.Manager{}
-	err := m.DeleteModel(context.Background(), "test-model")
-	if err == nil {
-		t.Error("expected error when whisper manager not initialized")
-	}
-}
-
-func TestManager_Transcribe_NoWhisper(t *testing.T) {
-	m := &pkg.Manager{}
-	_, err := m.Transcribe(context.Background(), bytes.NewReader([]byte{}), &schema.TranscribeRequest{})
-	if err == nil {
-		t.Error("expected error when whisper manager not initialized")
-	}
-}
-
-func TestManager_Translate_NoWhisper(t *testing.T) {
-	m := &pkg.Manager{}
-	_, err := m.Translate(context.Background(), bytes.NewReader([]byte{}), &schema.TranslateRequest{})
-	if err == nil {
-		t.Error("expected error when whisper manager not initialized")
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // TESTS FOR OPENAI ROUTES

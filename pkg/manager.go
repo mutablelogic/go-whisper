@@ -6,12 +6,16 @@ import (
 	"io"
 
 	// Packages
+	goclient "github.com/mutablelogic/go-client"
 	"github.com/mutablelogic/go-client/pkg/multipart"
+	"github.com/mutablelogic/go-client/pkg/otel"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
 	openai "github.com/mutablelogic/go-whisper/pkg/openai"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
+	attribute "go.opentelemetry.io/otel/attribute"
+	trace "go.opentelemetry.io/otel/trace"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -24,6 +28,7 @@ type Manager struct {
 	whisper    *whisper.Manager
 	elevenlabs *elevenlabs.Client
 	openai     *openai.Client
+	tracer     trace.Tracer
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -42,12 +47,17 @@ func New(modelsPath string, whisperOpts []whisper.Opt, opt ...Opt) (*Manager, er
 		}
 	}
 
-	// Create whisper client
+	// Create whisper client (required - never nil)
 	whisperManager, err := whisper.New(modelsPath, whisperOpts...)
 	if err != nil {
 		return nil, err
-	} else {
-		self.whisper = whisperManager
+	}
+	self.whisper = whisperManager
+
+	// Add tracer if provided
+	if o.tracer != nil {
+		self.tracer = o.tracer
+		o.clientOpts = append(o.clientOpts, goclient.OptTracer(o.tracer))
 	}
 
 	// Create elevenlabs client if API key provided
@@ -84,7 +94,10 @@ func (m *Manager) Close() error {
 // PUBLIC METHODS
 
 // ListModels returns all available models from whisper, openai, and elevenlabs
-func (m *Manager) ListModels() []*schema.Model {
+func (m *Manager) ListModels(ctx context.Context) []*schema.Model {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.ListModels")
+	defer func() { endSpan(nil) }()
+
 	models := make([]*schema.Model, 0)
 
 	// Add whisper models
@@ -120,40 +133,71 @@ func (m *Manager) ListModels() []*schema.Model {
 }
 
 // GetModel retrieves a model by ID from all available sources
-func (m *Manager) GetModel(modelID string) (*schema.Model, error) {
-	models := m.ListModels()
+func (m *Manager) GetModel(ctx context.Context, modelID string) (*schema.Model, error) {
+	// OTEL request tracing
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.GetModel",
+		attribute.String("model.id", modelID),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
+	// List models and find by ID
+	models := m.ListModels(ctx)
 	for _, model := range models {
 		if model.Id == modelID {
 			return model, nil
 		}
 	}
-	return nil, ErrNotFound.With(modelID)
+	err = ErrNotFound.With(modelID)
+	return nil, err
 }
 
 // DownloadModel downloads a whisper model by path
 func (m *Manager) DownloadModel(ctx context.Context, path string, fn func(cur, total uint64)) (*schema.Model, error) {
-	if m.whisper == nil {
-		return nil, errors.New("whisper manager not initialized")
-	}
-	return m.whisper.DownloadModel(ctx, path, fn)
+	// OTEL request tracing
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.DownloadModel",
+		attribute.String("model.path", path),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
+	// Download the model
+	result, err := m.whisper.DownloadModel(ctx, path, fn)
+	return result, err
 }
 
 // DeleteModel deletes a whisper model by id
 func (m *Manager) DeleteModel(ctx context.Context, modelID string) error {
-	model, err := m.GetModel(modelID)
+	// OTEL request tracing
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.DeleteModel",
+		attribute.String("model.id", modelID),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
+	// Delete the model
+	model, err := m.GetModel(ctx, modelID)
 	if err != nil {
 		return err
 	} else if model.OwnedBy != "whisper" {
-		return errors.New("can only delete whisper models, " + modelID + " is owned by " + model.OwnedBy)
-	} else if m.whisper == nil {
-		return errors.New("whisper manager not initialized")
+		err = errors.New("can only delete whisper models, " + modelID + " is owned by " + model.OwnedBy)
+		return err
 	}
-	return m.whisper.DeleteModelById(modelID)
+	err = m.whisper.DeleteModelById(modelID)
+	return err
 }
 
 // Transcribe performs a transcription request in the language of the speech
 func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.TranscribeRequest) (*schema.Transcription, error) {
-	model, err := m.GetModel(req.Model)
+	// OTEL request tracing
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.Transcribe",
+		attribute.String("model.id", req.Model),
+		attribute.String("request", req.String()),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
+	model, err := m.GetModel(ctx, req.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -161,20 +205,34 @@ func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.Trans
 	// Route based on model ownership
 	switch model.OwnedBy {
 	case "whisper":
-		return m.transcribeWhisper(ctx, r, req, model)
+		var result *schema.Transcription
+		result, err = m.transcribeWhisper(ctx, r, req, model)
+		return result, err
 	case "openai":
-		return m.transcribeOpenAI(ctx, r, req, model)
+		var result *schema.Transcription
+		result, err = m.transcribeOpenAI(ctx, r, req, model)
+		return result, err
 	case "elevenlabs":
-		return m.transcribeElevenLabs(ctx, r, req, model)
+		var result *schema.Transcription
+		result, err = m.transcribeElevenLabs(ctx, r, req, model)
+		return result, err
 	default:
-		return nil, errors.New("unsupported model owner: " + model.OwnedBy)
+		err = errors.New("unsupported model owner: " + model.OwnedBy)
+		return nil, err
 	}
 }
 
 // Translate performs a transcription request and returns the result in English
 func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.TranslateRequest) (*schema.Transcription, error) {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.Translate",
+		attribute.String("model.id", req.Model),
+		attribute.String("request", req.String()),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
 	// Find the model
-	model, err := m.GetModel(req.Model)
+	model, err := m.GetModel(ctx, req.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -182,13 +240,20 @@ func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.Transl
 	// Route based on model ownership
 	switch model.OwnedBy {
 	case "whisper":
-		return m.translateWhisper(ctx, r, req, model)
+		var result *schema.Transcription
+		result, err = m.translateWhisper(ctx, r, req, model)
+		return result, err
 	case "openai":
-		return m.translateOpenAI(ctx, r, req, model)
+		var result *schema.Transcription
+		result, err = m.translateOpenAI(ctx, r, req, model)
+		return result, err
 	case "elevenlabs":
-		return m.translateElevenLabs(ctx, r, req, model)
+		var result *schema.Transcription
+		result, err = m.translateElevenLabs(ctx, r, req, model)
+		return result, err
 	default:
-		return nil, errors.New("unsupported model owner: " + model.OwnedBy)
+		err = errors.New("unsupported model owner: " + model.OwnedBy)
+		return nil, err
 	}
 }
 

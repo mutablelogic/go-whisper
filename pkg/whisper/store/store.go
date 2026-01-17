@@ -305,6 +305,7 @@ func listModels(path, ext string) ([]*schema.Model, error) {
 		model.Object = "model"
 		model.Path = path
 		model.Created = info.ModTime().Unix()
+		model.OwnedBy = "whisper"
 
 		// Generate an Id for the model
 		model.Id = modelNameToId(filepath.Base(path))
