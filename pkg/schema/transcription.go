@@ -22,11 +22,7 @@ type Transcription struct {
 // STRINGIFY
 
 func (t *Transcription) String() string {
-	data, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
+	return stringify(*t)
 }
 
 func (t Timestamp) MarshalJSON() ([]byte, error) {

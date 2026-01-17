@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrTranscriptionFailed = errors.New("whisper_full failed")
+	ErrBadParameter        = errors.New("invalid parameter")
 )
 
 type HTTPError struct {

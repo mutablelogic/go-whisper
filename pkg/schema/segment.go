@@ -1,7 +1,6 @@
 package schema
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -26,11 +25,7 @@ type Segment struct {
 // STRINGIFY
 
 func (s *Segment) String() string {
-	data, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
+	return stringify(*s)
 }
 
 //////////////////////////////////////////////////////////////////////////////

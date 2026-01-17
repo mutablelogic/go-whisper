@@ -41,11 +41,17 @@ func Whisper_init_from_file_with_params(path string, params ContextParams) *Cont
 
 // Create a new context with model data and context parameters. Returns nil on error.
 func Whisper_init_from_buffer_with_params(data []byte, params ContextParams) *Context {
+	if len(data) == 0 {
+		return nil
+	}
 	return (*Context)(C.whisper_init_from_buffer_with_params(unsafe.Pointer(&data[0]), C.size_t(len(data)), (C.struct_whisper_context_params)(params)))
 }
 
 // Frees all memory allocated by the model.
 func Whisper_free(ctx *Context) {
+	if ctx == nil {
+		return
+	}
 	C.whisper_free((*C.struct_whisper_context)(ctx))
 }
 
@@ -86,6 +92,11 @@ func Whisper_is_multilingual(ctx *Context) bool {
 // Not thread safe for same context
 // Uses the specified decoding strategy to obtain the text.
 func Whisper_full(ctx *Context, params FullParams, samples []float32) error {
+	// Check for nil context or empty samples
+	if ctx == nil || len(samples) == 0 {
+		return ErrBadParameter
+	}
+
 	// Free any allocated memory in params after use
 	defer params.Close()
 
@@ -109,46 +120,73 @@ func (ctx *Context) DefaultLangId() int {
 
 // Get the start time of the specified segment
 func (ctx *Context) SegmentT0(n int) int64 {
+	if n < 0 || n >= ctx.NumSegments() {
+		return 0
+	}
 	return int64(C.whisper_full_get_segment_t0((*C.struct_whisper_context)(ctx), C.int(n)))
 }
 
 // Get the end time of the specified segment
 func (ctx *Context) SegmentT1(n int) int64 {
+	if n < 0 || n >= ctx.NumSegments() {
+		return 0
+	}
 	return int64(C.whisper_full_get_segment_t1((*C.struct_whisper_context)(ctx), C.int(n)))
 }
 
 // Get whether the next segment is predicted as a speaker turn
 func (ctx *Context) SegmentSpeakerTurnNext(n int) bool {
+	if n < 0 || n >= ctx.NumSegments() {
+		return false
+	}
 	return (bool)(C.whisper_full_get_segment_speaker_turn_next((*C.struct_whisper_context)(ctx), C.int(n)))
 }
 
 // Get the text of the specified segment
 func (ctx *Context) SegmentText(n int) string {
+	if n < 0 || n >= ctx.NumSegments() {
+		return ""
+	}
 	return C.GoString(C.whisper_full_get_segment_text((*C.struct_whisper_context)(ctx), C.int(n)))
 }
 
 // Get number of tokens in the specified segment
 func (ctx *Context) SegmentNumTokens(n int) int {
+	if n < 0 || n >= ctx.NumSegments() {
+		return 0
+	}
 	return int(C.whisper_full_n_tokens((*C.struct_whisper_context)(ctx), C.int(n)))
 }
 
 // Get the token text in the specified segment
 func (ctx *Context) SegmentTokenText(n, i int) string {
+	if n < 0 || n >= ctx.NumSegments() || i < 0 || i >= ctx.SegmentNumTokens(n) {
+		return ""
+	}
 	return C.GoString(C.whisper_full_get_token_text((*C.struct_whisper_context)(ctx), C.int(n), C.int(i)))
 }
 
 // Get the token id in the specified segment
 func (ctx *Context) SegmentTokenId(n, i int) int32 {
+	if n < 0 || n >= ctx.NumSegments() || i < 0 || i >= ctx.SegmentNumTokens(n) {
+		return 0
+	}
 	return int32(C.whisper_full_get_token_id((*C.struct_whisper_context)(ctx), C.int(n), C.int(i)))
 }
 
 // Get the token probability of the specified token in the specified segment
 func (ctx *Context) SegmentTokenProb(n, i int) float32 {
+	if n < 0 || n >= ctx.NumSegments() || i < 0 || i >= ctx.SegmentNumTokens(n) {
+		return 0
+	}
 	return float32(C.whisper_full_get_token_p((*C.struct_whisper_context)(ctx), C.int(n), C.int(i)))
 }
 
 // Get token data for the specified token in the specified segment
 // This contains probabilities, timestamps, etc.
 func (ctx *Context) SegmentTokenData(n, i int) TokenData {
+	if n < 0 || n >= ctx.NumSegments() || i < 0 || i >= ctx.SegmentNumTokens(n) {
+		return TokenData{}
+	}
 	return (TokenData)(C.whisper_full_get_token_data((*C.struct_whisper_context)(ctx), C.int(n), C.int(i)))
 }
