@@ -27,23 +27,27 @@ ENV PATH=$PATH:/usr/local/go/bin
 WORKDIR /app
 COPY . .
 
-# Make whisper with CUDA support
+# Make whisper with CUDA support using shared libraries
 ENV CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH}
 ENV GGML_CUDA=${GGML_CUDA}
-RUN make -j1
+RUN make clean && make gowhisper
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
 RUN apt-get -y update \
     && apt-get -y install ca-certificates libgomp1 \
-    && apt-get -y install libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx6 libx264-160 libx265-199 libdav1d5 libnuma1
+    && apt-get -y install libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx7 libx264-163 libx265-199 libdav1d5 libnuma1
 
-# Copy built gowhisper binary
+# Copy built gowhisper binary and shared libraries
 COPY --from=build --chmod=755 /app/build/gowhisper /usr/local/bin/gowhisper
+COPY --from=build /app/build/install/lib/libav*.so* /usr/local/lib/
+COPY --from=build /app/build/install/lib/libsw*.so* /usr/local/lib/
+RUN ldconfig
 
 # Container environment
-ENV WHISPER_DIR="/data"
+ENV GOWHISPER_DIR="/data"
+ENV GOWHISPER_ADDR="0.0.0.0:8081"
 VOLUME [ "/data" ]
 ENTRYPOINT [ "/usr/local/bin/gowhisper" ]
 STOPSIGNAL SIGQUIT
-EXPOSE 8082
+EXPOSE 8081

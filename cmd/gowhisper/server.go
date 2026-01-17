@@ -29,7 +29,7 @@ type ServerCommands struct {
 }
 
 type RunServer struct {
-	Models string `name:"models" env:"WHISPER_DIR" help:"Models directory path" default:""`
+	Models string `name:"models" env:"GOWHISPER_DIR" help:"Models directory path" default:""`
 
 	// API keys for external services
 	OpenAIKey     string `name:"openai-api-key" env:"OPENAI_API_KEY" help:"OpenAI API key"`
@@ -96,6 +96,10 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	if ctx.Debug {
 		// Enable HTTP tracing for OpenAI and ElevenLabs clients
 		managerOpts = append(managerOpts, pkg.OptClientOpts(client.OptTrace(os.Stderr, false)))
+	}
+	if ctx.HTTP.Timeout > 0 {
+		// Set HTTP client timeout for OpenAI and ElevenLabs clients
+		managerOpts = append(managerOpts, pkg.OptClientOpts(client.OptTimeout(ctx.HTTP.Timeout)))
 	}
 	if cmd.OpenAIKey != "" {
 		managerOpts = append(managerOpts, pkg.OptOpenAIKey(cmd.OpenAIKey))
