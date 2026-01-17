@@ -64,7 +64,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*Tra
 	// Create multipart request, and execute it
 	if payload, err := client.NewMultipartRequest(req, client.ContentTypeAny); err != nil {
 		return nil, err
-	} else if err := c.Do(payload, &response, opts...); err != nil {
+	} else if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
 		return nil, err
 	}
 

@@ -81,11 +81,38 @@ func (cmd *TranslateCommand) Run(ctx *Globals) (err error) {
 		return err
 	}
 
-	// Print result - if non-JSON format, just print the text
-	if format != httpclient.FormatJSON {
-		fmt.Println(result.Text)
-	} else {
+	// Print result based on format
+	switch format {
+	case httpclient.FormatJSON:
 		fmt.Println(result)
+	case httpclient.FormatVTT:
+		if len(result.Segments) > 0 {
+			// Client-side formatting from segments
+			fmt.Print("WEBVTT\n\n")
+			for _, seg := range result.Segments {
+				if seg != nil {
+					seg.WriteVTT(os.Stdout, 0)
+				}
+			}
+		} else {
+			// Server already formatted it
+			fmt.Print(result.Text)
+		}
+	case httpclient.FormatSRT:
+		if len(result.Segments) > 0 {
+			// Client-side formatting from segments
+			for _, seg := range result.Segments {
+				if seg != nil {
+					seg.WriteSRT(os.Stdout, 0)
+				}
+			}
+		} else {
+			// Server already formatted it
+			fmt.Print(result.Text)
+		}
+	default:
+		// For text and other formats, print the formatted text from server
+		fmt.Print(result.Text)
 	}
 	return nil
 }

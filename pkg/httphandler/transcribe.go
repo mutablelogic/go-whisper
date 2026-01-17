@@ -58,11 +58,16 @@ func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, result *
 	// Determine response format based on Accept header
 	switch {
 	case acceptHeader == "text/plain":
-		// Return plain text
+		// Return plain text with segments (includes speaker labels if available)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(result.Text))
-		return err
+		for _, seg := range result.Segments {
+			if seg != nil {
+				seg.WriteText(w)
+			}
+		}
+		w.Write([]byte("\n")) // Final newline
+		return nil
 	case acceptHeader == "application/x-subrip" || acceptHeader == "text/subrip" || acceptHeader == "text/srt":
 		// Return SRT format
 		w.Header().Set("Content-Type", "application/x-subrip")
