@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -201,8 +202,8 @@ func (t *Task) Transcribe(ctx context.Context, ts time.Duration, samples []float
 	t.params.SetAbortCallback(t.whisper, nil)
 	t.params.SetSegmentCallback(t.whisper, nil)
 
-	// Append the transcription
-	t.appendResult(ts, fn != nil)
+	// Append the transcription and segments (always include segments for output formats like VTT/SRT)
+	t.appendResult(ts, true)
 
 	// Return success
 	return nil
@@ -328,6 +329,10 @@ func (t *Task) appendResult(ts time.Duration, segments bool) {
 		seg := t.whisper.Segment(i)
 		t.result.Text += seg.Text
 	}
+
+	// Trim leading/trailing whitespace from the full text
+	t.result.Text = strings.TrimSpace(t.result.Text)
+
 	if segments {
 		// Append segments
 		for i := 0; i < t.whisper.NumSegments(); i++ {

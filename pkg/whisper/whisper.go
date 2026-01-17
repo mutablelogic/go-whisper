@@ -96,18 +96,23 @@ func New(path string, opt ...Opt) (*Manager, error) {
 		globalManager.pool = pool
 	}
 
-	// Logging
-	if o.logfn != nil {
-		whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
-			if !o.debug && level > whisper.LogLevelError {
-				return
-			}
-			o.logfn(fmt.Sprintf("[%s] %s", level, strings.TrimSpace(text)))
-		})
-		ffmpeg.SetLogging(o.debug, func(text string) {
-			o.logfn(text)
-		})
+	// Logging - always set up to override whisper's default stderr logging
+	// Only log errors by default, or all levels if debug is enabled
+	logfn := o.logfn
+	if logfn == nil {
+		// Suppress all logging if no log function provided
+		logfn = func(string) {}
 	}
+
+	whisper.Whisper_log_set(func(level whisper.LogLevel, text string) {
+		if !o.debug && level > whisper.LogLevelError {
+			return
+		}
+		logfn(fmt.Sprintf("[%s] %s", level, strings.TrimSpace(text)))
+	})
+	ffmpeg.SetLogging(o.debug, func(text string) {
+		logfn(text)
+	})
 
 	// Return success
 	return globalManager, nil

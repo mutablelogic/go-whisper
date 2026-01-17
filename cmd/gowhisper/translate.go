@@ -83,7 +83,7 @@ func (cmd *TranslateCommand) Run(ctx *Globals) (err error) {
 
 	// Print result - if non-JSON format, just print the text
 	if format != httpclient.FormatJSON {
-		fmt.Print(result.Text)
+		fmt.Println(result.Text)
 	} else {
 		fmt.Println(result)
 	}
