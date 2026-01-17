@@ -262,8 +262,14 @@ func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.Transl
 
 // transcribeWhisper transcribes using the local whisper model
 func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Transcribe",
+		attribute.String("model.id", model.Id),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
 	var result *schema.Transcription
-	err := m.whisper.WithModel(model, func(task *whisper.Task) error {
+	err = m.whisper.WithModel(model, func(task *whisper.Task) error {
 		// Set transcription parameters from request
 		if req.Language != nil {
 			task.SetLanguage(types.PtrString(req.Language))
@@ -294,9 +300,15 @@ func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schem
 
 // translateWhisper translates using the local whisper model
 func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Translate",
+		attribute.String("model.id", model.Id),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
 	// Execute translation with the model
 	var result *schema.Transcription
-	err := m.whisper.WithModel(model, func(task *whisper.Task) error {
+	err = m.whisper.WithModel(model, func(task *whisper.Task) error {
 		// Set translate flag
 		task.SetTranslate(true)
 
