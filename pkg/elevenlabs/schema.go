@@ -13,14 +13,26 @@ import (
 // TYPES
 
 type TranscribeRequest struct {
-	Model          string         `json:"model_id"` // scribe_v1, scribe_v1_experimental
-	File           multipart.File `json:"file"`
-	Language       *string        `json:"language_code,omitempty"`
-	TagAudioEvents *bool          `json:"tag_audio_events,omitempty"`
-	NumSpeakers    *uint64        `json:"num_speakers,omitempty"`
-	Timestamps     *string        `json:"timestamps_granularity,omitempty"` // none, word, character
-	Diarize        *bool          `json:"diarize,omitempty"`
-	FileFormat     *string        `json:"file_format,omitempty"` // pcm_s16le_16, other
+	Model          string           `json:"model_id"` // scribe_v1, scribe_v1_experimental
+	File           multipart.File   `json:"file"`
+	Language       *string          `json:"language_code,omitempty"`
+	TagAudioEvents *bool            `json:"tag_audio_events,omitempty"`
+	NumSpeakers    *uint64          `json:"num_speakers,omitempty"`
+	Timestamps     *string          `json:"timestamps_granularity,omitempty"` // none, word, character
+	Diarize        *bool            `json:"diarize,omitempty"`
+	DiarizationThr *float64         `json:"diarization_threshold,omitempty"`
+	FileFormat     *string          `json:"file_format,omitempty"` // pcm_s16le_16, other
+	CloudURL       *string          `json:"cloud_storage_url,omitempty"`
+	EnableLogging  *bool            `json:"enable_logging,omitempty"`
+	Webhook        *bool            `json:"webhook,omitempty"`
+	WebhookID      *string          `json:"webhook_id,omitempty"`
+	WebhookMeta    json.RawMessage  `json:"webhook_metadata,omitempty"`
+	Temperature    *float64         `json:"temperature,omitempty"`
+	Seed           *int64           `json:"seed,omitempty"`
+	UseMultiChan   *bool            `json:"use_multi_channel,omitempty"`
+	EntityDetect   any              `json:"entity_detection,omitempty"`
+	Keyterms       []string         `json:"keyterms,omitempty"`
+	AdditionalFmt  []map[string]any `json:"additional_formats,omitempty"`
 }
 
 type TranscribeResponse struct {
@@ -51,11 +63,12 @@ type TranscribeChar struct {
 
 const (
 	Endpoint       = "https://api.elevenlabs.io/v1"
-	TranscribePath = "speech-to-text" // Endpoint for transcription
+	TranscribePath = "speech-to-text"             // Endpoint for transcription
+	TranscriptPath = "speech-to-text/transcripts" // Base path for transcript get/delete
 )
 
 var (
-	Models = []string{"scribe_v1", "scribe_v1_experimental"}
+	Models = []string{"scribe_v2", "scribe_v1", "scribe_v1_experimental"}
 )
 
 /////////////////////////////////////////////////////////////////////////////////

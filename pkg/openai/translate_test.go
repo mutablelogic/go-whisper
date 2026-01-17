@@ -9,7 +9,7 @@ import (
 	// Packages
 	"github.com/mutablelogic/go-client/pkg/multipart"
 	"github.com/mutablelogic/go-server/pkg/types"
-	"github.com/mutablelogic/go-whisper/pkg/client/openai"
+	openai "github.com/mutablelogic/go-whisper/pkg/openai"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func Test_Translate_001(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/de-podcast.wav"))
+	f, err := os.Open(filepath.Join("../../samples/de-podcast.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}

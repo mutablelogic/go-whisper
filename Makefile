@@ -72,7 +72,7 @@ test: test-sys test-pkg
 # Test whisper pkg bindings
 test-pkg: generate libwhisper libffmpeg
 	@echo "Running tests (pkg)"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./pkg/whisper/...
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./pkg/...
 
 # Test whisper bindings
 test-sys: generate libwhisper

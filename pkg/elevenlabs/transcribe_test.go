@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	// Packages
-	"github.com/mutablelogic/go-client/pkg/multipart"
-	"github.com/mutablelogic/go-server/pkg/types"
-	"github.com/mutablelogic/go-whisper/pkg/client/elevenlabs"
-	"github.com/stretchr/testify/assert"
+	multipart "github.com/mutablelogic/go-client/pkg/multipart"
+	types "github.com/mutablelogic/go-server/pkg/types"
+	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
+	assert "github.com/stretchr/testify/assert"
 )
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -21,7 +21,7 @@ func Test_Transcribe_001(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/jfk.wav"))
+	f, err := os.Open(filepath.Join("../../samples/jfk.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
@@ -43,7 +43,7 @@ func Test_Transcribe_002(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/en-office.mp3"))
+	f, err := os.Open(filepath.Join("../../samples/en-office.mp3"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
@@ -66,7 +66,7 @@ func Test_Transcribe_003(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/de-podcast.wav"))
+	f, err := os.Open(filepath.Join("../../samples/de-podcast.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
@@ -82,6 +82,20 @@ func Test_Transcribe_003(t *testing.T) {
 
 	t.Log(resp.Segments())
 
+}
+
+func Test_Transcript_EmptyID(t *testing.T) {
+	client := NewClient(t)
+	if client == nil {
+		t.Skip("client not created")
+	}
+
+	if _, err := client.GetTranscript(context.Background(), ""); err == nil {
+		t.Fatal("expected error for empty transcription id")
+	}
+	if err := client.DeleteTranscript(context.Background(), ""); err == nil {
+		t.Fatal("expected error for empty transcription id")
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////

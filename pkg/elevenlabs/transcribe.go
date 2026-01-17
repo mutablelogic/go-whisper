@@ -43,3 +43,25 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 	// Return success
 	return &response, nil
 }
+
+// GetTranscript retrieves a previously created transcript by ID.
+func (c *Client) GetTranscript(ctx context.Context, transcriptionID string) (*TranscribeResponse, error) {
+	if transcriptionID == "" {
+		return nil, fmt.Errorf("transcription_id is required")
+	}
+
+	var response TranscribeResponse
+	if err := c.DoWithContext(ctx, client.MethodGet, &response, client.OptPath(TranscriptPath, transcriptionID)); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+// DeleteTranscript deletes a previously created transcript by ID.
+func (c *Client) DeleteTranscript(ctx context.Context, transcriptionID string) error {
+	if transcriptionID == "" {
+		return fmt.Errorf("transcription_id is required")
+	}
+
+	return c.DoWithContext(ctx, client.MethodDelete, nil, client.OptPath(TranscriptPath, transcriptionID))
+}

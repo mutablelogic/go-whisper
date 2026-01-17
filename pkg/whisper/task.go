@@ -10,6 +10,7 @@ import (
 	"time"
 
 	// Packages
+	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 
@@ -204,6 +205,40 @@ func (t *Task) Transcribe(ctx context.Context, ts time.Duration, samples []float
 	t.appendResult(ts, fn != nil)
 
 	// Return success
+	return nil
+}
+
+// TranscribeReader transcribes audio from an io.Reader using the segmenter
+// to automatically handle audio decoding and segmentation. This is a higher-level
+// convenience function that wraps Transcribe.
+//
+// The reader can be any audio format supported by FFmpeg (mp3, wav, etc.).
+// Audio is automatically decoded, resampled to 16kHz, and converted to mono.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - r: Audio source (any format supported by FFmpeg)
+//   - fn: Optional callback for each segment during transcription
+//   - segmenterOpts: Optional segmenter options (e.g., segmenter.WithSegmentSize(30*time.Second))
+//
+// Returns the final transcription result or an error.
+func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentFunc, segmenterOpts ...segmenter.Opt) error {
+	// Create segmenter with Whisper's sample rate (16kHz)
+	seg, err := segmenter.NewFromReader(r, whisper.SampleRate, segmenterOpts...)
+	if err != nil {
+		return err
+	}
+	defer seg.Close()
+
+	// Process each audio segment
+	err = seg.DecodeFloat32(ctx, func(ts time.Duration, samples []float32) error {
+		return t.Transcribe(ctx, ts, samples, fn)
+	})
+
+	if err != nil && err != io.EOF {
+		return err
+	}
+
 	return nil
 }
 

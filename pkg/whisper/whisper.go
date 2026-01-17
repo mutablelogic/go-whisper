@@ -113,21 +113,21 @@ func New(path string, opt ...Opt) (*Manager, error) {
 	return globalManager, nil
 }
 
-// Close closes the global whisper manager and releases all resources.
+// Close closes the whisper manager and releases all resources.
 // It is safe to call multiple times.
-func Close() error {
-	globalManager.Lock()
-	defer globalManager.Unlock()
+func (m *Manager) Close() error {
+	m.Lock()
+	defer m.Unlock()
 
 	// Check if initialized
-	if globalManager.store == nil {
+	if m.store == nil {
 		return nil
 	}
 
 	// Release pool resources
 	var result error
-	if globalManager.pool != nil {
-		result = errors.Join(result, globalManager.pool.close())
+	if m.pool != nil {
+		result = errors.Join(result, m.pool.close())
 	}
 
 	// Clean up sys/whisper resources
@@ -135,11 +135,17 @@ func Close() error {
 	whisper.CleanupAllCallbacks()
 
 	// Set all to nil
-	globalManager.pool = nil
-	globalManager.store = nil
+	m.pool = nil
+	m.store = nil
 
 	// Return any errors
 	return result
+}
+
+// Close closes the global whisper manager. This is a convenience function
+// that calls Close() on the global manager instance.
+func Close() error {
+	return globalManager.Close()
 }
 
 // newContextPool creates a simple context pool

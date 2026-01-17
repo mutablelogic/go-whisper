@@ -113,19 +113,18 @@ func (c *Client) ListModels(ctx context.Context) ([]schema.Model, error) {
 
 // Download model for use in transcription and translation
 func (c *Client) DownloadModel(ctx context.Context, path string, fn func(cur, total uint64)) (*schema.Model, error) {
-	switch {
-	case c.gowhisper != nil:
-		model, err := c.gowhisper.DownloadModel(ctx, path, fn)
-		if err != nil {
-			return nil, err
-		}
-
-		// Return success
-		return model, nil
+	// Only whisper models can be downloaded
+	if c.gowhisper == nil {
+		return nil, httpresponse.ErrNotImplemented.Withf("downloading is not supported")
 	}
 
-	// Return error
-	return nil, httpresponse.ErrNotImplemented.Withf("downloading is not supported")
+	model, err := c.gowhisper.DownloadModel(ctx, path, fn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return success
+	return model, nil
 }
 
 // Delete existing model

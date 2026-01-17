@@ -10,7 +10,7 @@ import (
 	"github.com/mutablelogic/go-client"
 	"github.com/mutablelogic/go-client/pkg/multipart"
 	"github.com/mutablelogic/go-server/pkg/types"
-	"github.com/mutablelogic/go-whisper/pkg/client/openai"
+	openai "github.com/mutablelogic/go-whisper/pkg/openai"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +23,7 @@ func Test_Transcribe_001(t *testing.T) {
 	assert.NotNil(client)
 
 	// Open sample file
-	f, err := os.Open(filepath.Join("../../../samples/jfk.wav"))
+	f, err := os.Open(filepath.Join("../../samples/jfk.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
@@ -49,7 +49,7 @@ func Test_Transcribe_002(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/de-podcast.wav"))
+	f, err := os.Open(filepath.Join("../../samples/de-podcast.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
@@ -75,7 +75,7 @@ func Test_Transcribe_003(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/de-podcast.wav"))
+	f, err := os.Open(filepath.Join("../../samples/de-podcast.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
@@ -101,7 +101,7 @@ func Test_Transcribe_004(t *testing.T) {
 	client := NewClient(t)
 	assert.NotNil(client)
 
-	f, err := os.Open(filepath.Join("../../../samples/de-podcast.wav"))
+	f, err := os.Open(filepath.Join("../../samples/de-podcast.wav"))
 	if !assert.NoError(err) {
 		assert.FailNow("failed to open sample file")
 	}
