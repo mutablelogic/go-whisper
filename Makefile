@@ -48,7 +48,7 @@ ifeq ($(GGML_VULKAN),1)
 endif
 
 # Targets
-all: whisper
+all: gowhisper
 
 # Generate the pkg-config files
 generate: mkdir go-tidy libwhisper
@@ -56,10 +56,10 @@ generate: mkdir go-tidy libwhisper
 	@mkdir -p ${BUILD_DIR}/lib/pkgconfig
 	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig PREFIX="$(shell realpath ${PREFIX})" go generate ./sys/whisper
 
-# Make whisper
-whisper: generate libwhisper libffmpeg
-	@echo "Building whisper"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig CGO_LDFLAGS_ALLOW="-(W|D).*" ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/whisper ./cmd/whisper
+# Make gowhisper
+gowhisper: generate libwhisper libffmpeg
+	@echo "Building gowhisper"
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig CGO_LDFLAGS_ALLOW="-(W|D).*" ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/gowhisper ./cmd/gowhisper
 
 # Make api
 api: mkdir go-tidy
