@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 
 	// Packages
 	goclient "github.com/mutablelogic/go-client"
-	"github.com/mutablelogic/go-client/pkg/multipart"
-	"github.com/mutablelogic/go-client/pkg/otel"
+	multipart "github.com/mutablelogic/go-client/pkg/multipart"
+	otel "github.com/mutablelogic/go-client/pkg/otel"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
 	openai "github.com/mutablelogic/go-whisper/pkg/openai"
@@ -51,8 +52,9 @@ func New(modelsPath string, whisperOpts []whisper.Opt, opt ...Opt) (*Manager, er
 	whisperManager, err := whisper.New(modelsPath, whisperOpts...)
 	if err != nil {
 		return nil, err
+	} else {
+		self.whisper = whisperManager
 	}
-	self.whisper = whisperManager
 
 	// Add tracer if provided
 	if o.tracer != nil {
@@ -191,7 +193,6 @@ func (m *Manager) DeleteModel(ctx context.Context, modelID string) error {
 func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.TranscribeRequest) (*schema.Transcription, error) {
 	// OTEL request tracing
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.Transcribe",
-		attribute.String("model.id", req.Model),
 		attribute.String("request", req.String()),
 	)
 	var err error
@@ -225,7 +226,6 @@ func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.Trans
 // Translate performs a transcription request and returns the result in English
 func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.TranslateRequest) (*schema.Transcription, error) {
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.Translate",
-		attribute.String("model.id", req.Model),
 		attribute.String("request", req.String()),
 	)
 	var err error
@@ -262,8 +262,14 @@ func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.Transl
 
 // transcribeWhisper transcribes using the local whisper model
 func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Transcribe",
+		attribute.String("model.id", model.Id),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
 	var result *schema.Transcription
-	err := m.whisper.WithModel(model, func(task *whisper.Task) error {
+	err = m.whisper.WithModel(model, func(task *whisper.Task) error {
 		// Set transcription parameters from request
 		if req.Language != nil {
 			task.SetLanguage(types.PtrString(req.Language))
@@ -294,9 +300,15 @@ func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schem
 
 // translateWhisper translates using the local whisper model
 func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Translate",
+		attribute.String("model.id", model.Id),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
 	// Execute translation with the model
 	var result *schema.Transcription
-	err := m.whisper.WithModel(model, func(task *whisper.Task) error {
+	err = m.whisper.WithModel(model, func(task *whisper.Task) error {
 		// Set translate flag
 		task.SetTranslate(true)
 
@@ -354,7 +366,7 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema
 				Path: filename,
 			},
 			Prompt:      req.Prompt,
-			Format:      nil,
+			Format:      types.StringPtr(openai.FormatVerboseJson), // Request verbose_json to get segments
 			Temperature: req.Temperature,
 		},
 		Language: req.Language,
@@ -392,7 +404,7 @@ func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.
 			Path: filename,
 		},
 		Prompt:      req.Prompt,
-		Format:      nil,
+		Format:      types.StringPtr(openai.FormatVerboseJson), // Request verbose_json to get segments
 		Temperature: req.Temperature,
 	}
 
@@ -429,6 +441,7 @@ func (m *Manager) transcribeElevenLabs(ctx context.Context, r io.Reader, req *sc
 		Language:    req.Language,
 		Temperature: req.Temperature,
 		Diarize:     req.Diarize,
+		Timestamps:  types.StringPtr("word"), // Request word-level timestamps for segmentation
 	}
 
 	// Call ElevenLabs API
@@ -490,16 +503,114 @@ func transcriptionElevenLabsToSchema(resp *elevenlabs.TranscribeResponse) *schem
 		Language: resp.Language,
 	}
 
-	// Convert word-level timestamps to segments if present
+	// Merge word-level timestamps into phrase-based segments
 	if len(resp.Words) > 0 {
-		for _, word := range resp.Words {
-			result.Segments = append(result.Segments, &schema.Segment{
-				Start: schema.SecToTimestamp(word.Start),
-				End:   schema.SecToTimestamp(word.End),
-				Text:  word.Text,
-			})
-		}
+		result.Segments = mergeWordsIntoSegments(resp.Words)
 	}
 
 	return result
+}
+
+// mergeWordsIntoSegments combines word-level timestamps into larger phrase-based segments.
+// Segments are split on sentence boundaries (. ! ?), speaker changes, or after 10 seconds of continuous speech.
+func mergeWordsIntoSegments(words []elevenlabs.TranscribeWord) []*schema.Segment {
+	if len(words) == 0 {
+		return nil
+	}
+
+	const maxSegmentDuration = 10.0 // seconds
+
+	var segments []*schema.Segment
+	var currentText string
+	var currentSpeaker *string
+	var segmentStart float64
+	var segmentId int32
+	var prevWordEnd float64
+
+	for i, word := range words {
+		wordText := strings.TrimSpace(word.Text)
+		if wordText == "" {
+			continue // Skip empty words (e.g., spacing tokens)
+		}
+
+		// Check if we need to end the current segment before adding this word
+		shouldEndBeforeWord := false
+
+		if i > 0 {
+			// End on speaker change (diarization)
+			if word.Speaker != nil && currentSpeaker != nil && *word.Speaker != *currentSpeaker {
+				shouldEndBeforeWord = true
+			}
+
+			// End if segment duration would exceed max
+			if word.End-segmentStart > maxSegmentDuration {
+				shouldEndBeforeWord = true
+			}
+		}
+
+		// Finalize previous segment if needed
+		if shouldEndBeforeWord && currentText != "" {
+			seg := &schema.Segment{
+				Id:    segmentId,
+				Start: schema.SecToTimestamp(segmentStart),
+				End:   schema.SecToTimestamp(prevWordEnd),
+				Text:  currentText,
+			}
+			// Add speaker information if available
+			if currentSpeaker != nil {
+				seg.Speaker = *currentSpeaker
+			}
+			segments = append(segments, seg)
+			segmentId++
+			currentText = ""
+			segmentStart = word.Start
+			currentSpeaker = word.Speaker
+		}
+
+		// Initialize first segment
+		if currentText == "" {
+			segmentStart = word.Start
+			currentSpeaker = word.Speaker
+		}
+
+		// Append word text
+		if currentText != "" && !strings.HasSuffix(currentText, "-") {
+			currentText += " "
+		}
+		currentText += wordText
+		prevWordEnd = word.End
+
+		// Check if we should end after this word
+		isLastWord := i == len(words)-1
+		shouldEndAfterWord := false
+
+		// End on sentence boundaries
+		if strings.HasSuffix(wordText, ".") || strings.HasSuffix(wordText, "!") || strings.HasSuffix(wordText, "?") {
+			shouldEndAfterWord = true
+		}
+
+		// Always end on last word
+		if isLastWord {
+			shouldEndAfterWord = true
+		}
+
+		// Create segment if we should end
+		if shouldEndAfterWord && currentText != "" {
+			seg := &schema.Segment{
+				Id:    segmentId,
+				Start: schema.SecToTimestamp(segmentStart),
+				End:   schema.SecToTimestamp(word.End),
+				Text:  currentText,
+			}
+			// Add speaker information if available
+			if currentSpeaker != nil {
+				seg.Speaker = *currentSpeaker
+			}
+			segments = append(segments, seg)
+			segmentId++
+			currentText = ""
+		}
+	}
+
+	return segments
 }

@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	// Packages
+	client "github.com/mutablelogic/go-client"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
 	pkg "github.com/mutablelogic/go-whisper/pkg"
@@ -28,7 +29,7 @@ type ServerCommands struct {
 }
 
 type RunServer struct {
-	Models string `name:"models" help:"Models directory path" default:""`
+	Models string `name:"models" env:"GOWHISPER_DIR" help:"Models directory path" default:""`
 
 	// API keys for external services
 	OpenAIKey     string `name:"openai-api-key" env:"OPENAI_API_KEY" help:"OpenAI API key"`
@@ -56,9 +57,7 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	modelsPath := cmd.Models
 	if modelsPath == "" {
 		// Use default from environment or cache dir
-		if dir := os.Getenv("WHISPER_DIR"); dir != "" {
-			modelsPath = dir
-		} else if dir, err := os.UserCacheDir(); err == nil {
+		if dir, err := os.UserCacheDir(); err == nil {
 			modelsPath = filepath.Join(dir, "gowhisper")
 		} else {
 			modelsPath = filepath.Join(os.TempDir(), "gowhisper")
@@ -70,6 +69,7 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 		return fmt.Errorf("failed to create models directory: %w", err)
 	}
 
+	// Report models path
 	ctx.logger.With("models", modelsPath).Print(ctx.ctx, "using models directory")
 
 	// Build whisper options
@@ -82,12 +82,24 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	}
 	if ctx.Debug {
 		whisperOpts = append(whisperOpts, whisper.OptDebug())
+		// Provide a log function so debug output is actually shown
+		whisperOpts = append(whisperOpts, whisper.OptLog(func(s string) {
+			ctx.logger.Print(ctx.ctx, s)
+		}))
 	}
 
 	// Build manager options
 	managerOpts := []pkg.Opt{}
 	if ctx.tracer != nil {
 		managerOpts = append(managerOpts, pkg.OptTracer(ctx.tracer))
+	}
+	if ctx.Debug {
+		// Enable HTTP tracing for OpenAI and ElevenLabs clients
+		managerOpts = append(managerOpts, pkg.OptClientOpts(client.OptTrace(os.Stderr, false)))
+	}
+	if ctx.HTTP.Timeout > 0 {
+		// Set HTTP client timeout for OpenAI and ElevenLabs clients
+		managerOpts = append(managerOpts, pkg.OptClientOpts(client.OptTimeout(ctx.HTTP.Timeout)))
 	}
 	if cmd.OpenAIKey != "" {
 		managerOpts = append(managerOpts, pkg.OptOpenAIKey(cmd.OpenAIKey))

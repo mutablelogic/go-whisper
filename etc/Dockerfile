@@ -1,18 +1,27 @@
-ARG BASE_DEV_CONTAINER=ubuntu:22.04
-ARG BASE_RUN_CONTAINER=ubuntu:22.04
-ARG GO_VERSION=1.24.3
+ARG BASE_TAG=trixie-slim
+ARG BASE_DEV_CONTAINER=debian:${BASE_TAG}
+ARG BASE_RUN_CONTAINER=debian:${BASE_TAG}
+ARG CUDA_DOCKER_ARCH=all
+ARG GGML_CUDA=0
+ARG GGMML_VULKAN=1
+ARG GO_VERSION=1.25.6
 ARG ARCH
 ARG OS
 
 # Setup build container
 FROM ${BASE_DEV_CONTAINER} AS build
+ARG CUDA_DOCKER_ARCH
+ARG GGML_CUDA
+ARG GGMML_VULKAN
 ARG GO_VERSION
 ARG ARCH
 ARG OS
 
 RUN apt-get -y update \
- && apt-get -y install ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
- && apt-get -y install libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libdav1d-dev
+    && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
+    && apt install -y libfreetype-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libnuma-dev \
+    && apt install -y libvulkan-dev
+
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
@@ -22,22 +31,25 @@ ENV PATH=$PATH:/usr/local/go/bin
 WORKDIR /app
 COPY . .
 
-# Make whisper
-RUN make -j$(nproc)
+# Make whisper with CUDA support
+ENV CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH}
+ENV GGML_CUDA=${GGML_CUDA}
+ENV GGMML_VULKAN=${GGMML_VULKAN}
+RUN make -j1
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
 RUN apt-get -y update \
- && apt-get -y install ca-certificates libgomp1 \
- && apt-get -y install libfreetype6 libmp3lame0 libopus0 libvorbis0a libvpx-dev x264 dav1d
+    && apt install -y ca-certificates libgomp1 \
+    && apt install -y libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx9 libx264-164 libx265-215 libnuma1 \
+    && apt install -y libvulkan1 vulkan-tools    
 
-# Copy built whisper binary and entrypoint script
-COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin
-COPY --chmod=755 etc/entrypoint.sh .
+# Copy built gowhisper binary
+COPY --from=build --chmod=755 /app/build/gowhisper /usr/local/bin/gowhisper
 
 # Container environment
 ENV WHISPER_DIR="/data"
 VOLUME [ "/data" ]
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT [ "/usr/local/bin/gowhisper" ]
 STOPSIGNAL SIGQUIT
-EXPOSE 80
+EXPOSE 8082

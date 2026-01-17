@@ -1,13 +1,13 @@
 name: Build docker container on publish
 on:
   release:
-    types: [ created, edited ]
+    types: [created, edited]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'tag'
+        description: "tag"
         required: true
-        default: 'latest'
+        default: "latest"
         type: string
 jobs:
   var:
@@ -34,11 +34,12 @@ jobs:
     needs: var
     strategy:
       matrix:
-        arch: [ amd64, arm64 ]
+        arch: [amd64, arm64]
     runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-latest' || matrix.arch == 'arm64' && 'nx1' }} # Builds on NX1 self-hosted
     env:
       ARCH: ${{ matrix.arch }}
       OS: linux
+      DOCKER_FILE: etc/Dockerfile.cuda
       DOCKER_REGISTRY: ghcr.io/mutablelogic
     steps:
       - name: Install git
@@ -57,14 +58,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push
-        id: build      
+        id: build
         run: |
           git checkout v${{ needs.var.outputs.tag }}
           make docker && make docker-push
   manifest:
     name: Manifest
     needs:
-      - var 
+      - var
       - build
     strategy:
       matrix:

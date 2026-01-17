@@ -70,6 +70,9 @@ func (seg *Segment) WriteText(w io.Writer) {
 		fmt.Fprintf(w, "\n\n[%s] ", seg.Speaker)
 	} else if seg.SpeakerTurn {
 		fmt.Fprint(w, "\n\n[SPEAKER] ")
+	} else if seg.Id > 0 {
+		// Add space between segments when there's no speaker label
+		fmt.Fprint(w, " ")
 	}
 	if seg.Id > 0 {
 		fmt.Fprint(w, seg.Text)

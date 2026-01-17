@@ -93,8 +93,6 @@ libffmpeg: mkdir submodule
 	@mkdir -p ${BUILD_DIR}
 	@mkdir -p ${PREFIX}
 	@BUILD_DIR=$(shell realpath ${BUILD_DIR}) PREFIX=$(shell realpath ${PREFIX}) make -C third_party/go-media ffmpeg
-	@echo "TODO Fixing libavfilter.pc (removing -D_THREAD_SAFE from Libs)"
-	@sed -i '' 's/ -D_THREAD_SAFE//g' ${PREFIX}/lib/pkgconfig/libavfilter.pc || true
 
 # Build docker container
 docker: docker-dep submodule

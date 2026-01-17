@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	// Packages
 	kong "github.com/alecthomas/kong"
@@ -32,8 +33,9 @@ type Globals struct {
 
 	// HTTP server options
 	HTTP struct {
-		Prefix string `name:"prefix" help:"HTTP path prefix" default:"/api"`
-		Addr   string `name:"addr" env:"GOWHISPER_ADDR" help:"HTTP Listen address" default:"localhost:8081"`
+		Prefix  string        `name:"prefix" help:"HTTP path prefix" default:"/api"`
+		Addr    string        `name:"addr" env:"GOWHISPER_ADDR" help:"HTTP Listen address" default:"localhost:8081"`
+		Timeout time.Duration `name:"timeout" help:"HTTP client timeout" default:"2m"`
 	} `embed:"" prefix:"http."`
 
 	// Open Telemetry options
@@ -163,6 +165,9 @@ func (g *Globals) clientEndpoint(suffix string) (string, []client.ClientOpt, err
 	}
 	if g.tracer != nil {
 		opts = append(opts, client.OptTracer(g.tracer))
+	}
+	if g.HTTP.Timeout > 0 {
+		opts = append(opts, client.OptTimeout(g.HTTP.Timeout))
 	}
 
 	// Set prefix
