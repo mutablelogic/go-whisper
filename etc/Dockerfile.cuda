@@ -3,7 +3,7 @@ ARG BASE_DEV_CONTAINER=ghcr.io/mutablelogic/cuda-dev:${BASE_TAG}
 ARG BASE_RUN_CONTAINER=ghcr.io/mutablelogic/cuda-rt:${BASE_TAG}
 ARG CUDA_DOCKER_ARCH=all
 ARG GGML_CUDA=1
-ARG GO_VERSION=1.24.3
+ARG GO_VERSION=1.25.6
 ARG ARCH
 ARG OS
 
@@ -16,8 +16,8 @@ ARG ARCH
 ARG OS
 
 RUN apt-get -y update \
- && apt-get -y install ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
- && apt-get -y install libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libdav1d-dev
+    && apt-get -y install ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
+    && apt-get -y install libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libdav1d-dev libnuma-dev
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
@@ -27,7 +27,7 @@ ENV PATH=$PATH:/usr/local/go/bin
 WORKDIR /app
 COPY . .
 
-# Make whisper
+# Make whisper with CUDA support
 ENV CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH}
 ENV GGML_CUDA=${GGML_CUDA}
 RUN make -j1
@@ -35,16 +35,15 @@ RUN make -j1
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
 RUN apt-get -y update \
- && apt-get -y install ca-certificates libgomp1 \
- && apt-get -y install libfreetype6 libmp3lame0 libopus0 libvorbis0a libvpx-dev x264 dav1d
+    && apt-get -y install ca-certificates libgomp1 \
+    && apt-get -y install libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx6 libx264-160 libx265-199 libdav1d5 libnuma1
 
-# Copy built whisper binary and entrypoint script
-COPY --from=build --chmod=755 /app/build/whisper /usr/local/bin
-COPY --chmod=755 etc/entrypoint.sh .
+# Copy built gowhisper binary
+COPY --from=build --chmod=755 /app/build/gowhisper /usr/local/bin/gowhisper
 
 # Container environment
 ENV WHISPER_DIR="/data"
 VOLUME [ "/data" ]
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT [ "/usr/local/bin/gowhisper" ]
 STOPSIGNAL SIGQUIT
-EXPOSE 80
+EXPOSE 8082
