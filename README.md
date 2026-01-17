@@ -15,6 +15,8 @@ Speech-to-Text in golang using [whisper.cpp](https://github.com/ggerganov/whispe
 - **GPU Acceleration**: Support for CUDA, Vulkan, and Metal (macOS) acceleration
 - **Docker Support**: Pre-built images for amd64 and arm64 architectures
 
+For more information on features, see the [Features](doc/features.md) document.
+
 ## Project Structure
 
 - `cmd` contains the command-line tool, which can also be run as an OpenAPI-compatible HTTP server
