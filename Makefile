@@ -26,7 +26,12 @@ BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GitHash=$(shell git rev-parse H
 BUILD_LD_FLAGS += -X $(BUILD_MODULE)/pkg/version.GoBuildTime=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)" 
 TEST_FLAGS = -v
-CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF 
+CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF
+
+# Github Action runners
+ifeq ($(ARCH),arm64)
+    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a
+endif
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
 ifeq ($(GGML_CUDA),1)
