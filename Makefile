@@ -11,10 +11,11 @@ VERSION ?= $(shell git describe --tags --always | sed 's/^v//')
 DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 DOCKER_FILE ?= etc/Dockerfile
 
-# Set docker tag, etc
+# Set docker tag and other build parameters
 BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
 ROOT_PATH := $(CURDIR)
 BUILD_DIR ?= "build"
+BUILD_JOBS ?= -j
 PREFIX ?= ${BUILD_DIR}/install
 
 # Build flags
@@ -28,9 +29,6 @@ BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)"
 TEST_FLAGS = -v
 CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF
 
-# Build parallelism
-BUILD_JOBS ?= -j
-
 # Target specific CUDA architectures
 # https://developer.nvidia.com/cuda/gpus
 ifeq ($(ARCH),arm64)
@@ -41,12 +39,10 @@ ifeq ($(ARCH),amd64)
 endif
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
-# and reduce the parallel build jobs to 1 for cmake
 ifeq ($(GGML_CUDA),1)
 	TEST_FLAGS += -tags cuda
 	BUILD_FLAGS += -tags cuda
 	CMAKE_FLAGS += -DGGML_CUDA=ON
-	BUILD_JOBS = -j1
 endif
 
 # If GGML_VULKAN is set, then add a vulkan tag for the go ${BUILD FLAGS}

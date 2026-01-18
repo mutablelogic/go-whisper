@@ -21,7 +21,7 @@ vulkaninfo --summary
 docker pull ghcr.io/mutablelogic/go-whisper
 ```
 
-## Running with GPU Acceleration
+## Running with Vulkan GPU Acceleration
 
 ```bash
 # NVIDIA
@@ -31,7 +31,10 @@ docker run --rm --name gowhisper -p 8081:8081 --gpus all ghcr.io/mutablelogic/go
 docker run --rm --name gowhisper -p 8081:8081 --runtime nvidia \
   --device=/dev/nvhost-ctrl-gpu --device=/dev/nvhost-prof-gpu --device=/dev/nvmap --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
   -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
+  -v /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro \
   -v /etc/vulkan/icd.d:/etc/vulkan/icd.d:ro \
+  -e LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/tegra \
+  -e VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json \  
   ghcr.io/mutablelogic/go-whisper run --debug
 
 # AMD/Intel/Raspberry Pi
@@ -55,7 +58,9 @@ docker run --rm -it --gpus all \
 docker run --rm -it --runtime nvidia \
   --device=/dev/nvhost-ctrl-gpu --device=/dev/nvhost-prof-gpu --device=/dev/nvmap --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
   -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
-  -v /etc/vulkan/icd.d:/etc/vulkan/icd.d:ro \
+  -v /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro \
+  -v /etc/vulkansc/icd.d:/etc/vulkan/icd.d:ro \
+  -v /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro \
   --entrypoint vulkaninfo \
   ghcr.io/mutablelogic/go-whisper --summary
 
