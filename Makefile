@@ -47,7 +47,7 @@ endif
 
 # If GGML_VULKAN is set, then add a vulkan tag for the go ${BUILD FLAGS}
 ifeq ($(GGML_VULKAN),1)
-	TEST_FLAGS += -tags vulkan
+	TEST_FLAGS += -tags vulkan 
 	BUILD_FLAGS += -tags vulkan
 	CMAKE_FLAGS += -DGGML_VULKAN=ON
 endif
@@ -65,6 +65,12 @@ generate: mkdir go-tidy libwhisper
 gowhisper: generate libwhisper libffmpeg
 	@echo "Building gowhisper"
 	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig CGO_LDFLAGS_ALLOW="-(W|D).*" ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/gowhisper ./cmd/gowhisper
+
+# Make gowhisper-client (no server run command)
+gowhisper-client: 
+	@echo "Building gowhisper-client"
+	@${GO} build ${BUILD_FLAGS} -tags client -o ${BUILD_DIR}/gowhisper ./cmd/gowhisper
+
 
 # Make api
 api: mkdir go-tidy
