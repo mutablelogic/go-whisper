@@ -28,13 +28,13 @@ BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)"
 TEST_FLAGS = -v
 CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF
 
-# Github Action runners
+# Target specific CUDA architectures
 # https://developer.nvidia.com/cuda/gpus
 ifeq ($(ARCH),arm64)
     CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="87"
 endif
 ifeq ($(ARCH),amd64)
-    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="86;89"
+    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="75;86;89"
 endif
 
 
@@ -42,10 +42,7 @@ endif
 ifeq ($(GGML_CUDA),1)
 	TEST_FLAGS += -tags cuda
 	BUILD_FLAGS += -tags cuda
-	CUDA_DOCKER_ARCH ?= all
 	CMAKE_FLAGS += -DGGML_CUDA=ON
-	BUILD_TAG := "${BUILD_TAG}-cuda"
-	DOCKER_FILE = etc/Dockerfile.cuda-test
 endif
 
 # If GGML_VULKAN is set, then add a vulkan tag for the go ${BUILD FLAGS}
@@ -53,8 +50,6 @@ ifeq ($(GGML_VULKAN),1)
 	TEST_FLAGS += -tags vulkan
 	BUILD_FLAGS += -tags vulkan
 	CMAKE_FLAGS += -DGGML_VULKAN=ON
-	BUILD_TAG := "${BUILD_TAG}-vulkan"
-	DOCKER_FILE = etc/Dockerfile.vulkan
 endif
 
 # Targets

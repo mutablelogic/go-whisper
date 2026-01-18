@@ -11,10 +11,18 @@ ARG GO_VERSION
 ARG ARCH
 ARG OS
 
+#RUN apt -y update \
+#    && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
+#    && apt install -y libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libdav1d-dev libnuma-dev \
+#    && apt install -y libvulkan-dev libplacebo-dev libshaderc-dev glslang-tools glslc
+
 RUN apt -y update \
-    && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
+    && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl wget gnupg \
     && apt install -y libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libdav1d-dev libnuma-dev \
-    && apt install -y libvulkan-dev libplacebo-dev libshaderc-dev glslang-tools glslc
+    && wget -qO /etc/apt/trusted.gpg.d/lunarg.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc \
+    && echo "deb https://packages.lunarg.com/vulkan noble main" > /etc/apt/sources.list.d/lunarg-vulkan.list \
+    && apt -y update \
+    && apt install -y vulkan-sdk libplacebo-dev
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
