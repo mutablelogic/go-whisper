@@ -48,12 +48,22 @@ jobs:
             git \
             gcc \
             g++ \
-            make
+            make \
+            nasm \
+            libfreetype-dev \
+            libmp3lame-dev \
+            libopus-dev \
+            libvorbis-dev \
+            libvpx-dev \
+            libx264-dev \
+            libx265-dev \
+            libnuma-dev \
+            libzvbi-dev
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install cmake pkg-config
+          brew install pkg-config cmake nasm freetype lame opus libvorbis libvpx x264 x265
 
       - name: Build gowhisper
         env:
