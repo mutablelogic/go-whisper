@@ -26,7 +26,7 @@ COPY . .
 
 # Make whisper with Vulkan support
 ENV GGML_VULKAN=1
-RUN make clean && make -j1 
+RUN make clean && make
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
