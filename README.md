@@ -29,7 +29,7 @@ Get started quickly with Docker as the server:
 export OPENAI_API_KEY="your-key-here"
 export ELEVENLABS_API_KEY="your-key-here"
 
-# Start the server
+# Start the CPU-only server
 docker volume create whisper
 docker run -d --name whisper-server \
   --env OPENAI_API_KEY --env ELEVENLABS_API_KEY \
