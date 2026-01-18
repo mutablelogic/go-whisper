@@ -1,0 +1,90 @@
+name: Build and Release
+
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+
+jobs:
+    build:
+        name: Build gowhisper
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                include:
+                    - os: macos-latest
+                      arch: arm64
+                      goos: darwin
+                      goarch: arm64
+                    - os: ubuntu-24.04-arm
+                      arch: arm64
+                      goos: linux
+                      goarch: arm64
+                    - os: ubuntu-latest
+                      arch: amd64
+                      goos: linux
+                      goarch: amd64
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25"
+
+            - name: Install dependencies (Linux)
+              if: runner.os == 'Linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y build-essential cmake
+
+            - name: Install dependencies (macOS)
+              if: runner.os == 'macOS'
+              run: |
+                  brew install cmake
+
+            - name: Build gowhisper
+              env:
+                  GOOS: ${{ matrix.goos }}
+                  GOARCH: ${{ matrix.goarch }}
+              run: make gowhisper
+
+            - name: Rename binary for release
+              run: |
+                  if [ "${{ matrix.goos }}" = "darwin" ]; then
+                    mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+                  else
+                    mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+                  fi
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+                  path: build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+
+    release:
+        name: Create Release
+        needs: build
+        runs-on: ubuntu-latest
+        if: startsWith(github.ref, 'refs/tags/')
+
+        steps:
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: ./artifacts
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: ./artifacts/**/*
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
