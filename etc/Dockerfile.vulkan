@@ -14,7 +14,7 @@ ARG OS
 RUN apt -y update \
     && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
     && apt install -y libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libdav1d-dev libnuma-dev \
-    && apt install -y libvulkan-dev libplacebo-dev glslang-tools 
+    && apt install -y libvulkan-dev libplacebo-dev glslang-tools glslc
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
