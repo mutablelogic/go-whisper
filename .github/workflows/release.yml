@@ -63,7 +63,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install pkg-config cmake nasm freetype lame opus libvorbis libvpx x264 x265
+          brew install --quiet pkg-config cmake nasm freetype lame opus libvorbis libvpx x264 x265
 
       - name: Build gowhisper
         env:
@@ -75,6 +75,8 @@ jobs:
         run: |
           if [ "${{ matrix.goos }}" = "darwin" ]; then
             mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+            # Remove quarantine attributes to prevent Gatekeeper issues
+            xattr -c build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }} || true
           else
             mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
           fi
