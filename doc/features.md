@@ -8,7 +8,7 @@
 | GGML Whisper `ggml-small.en-tdrz.bin`[^1] | ✅ |  |  ✅ | ✅ |
 | OpenAI `whisper-1` [^2] | ✅ | ✅ |  | |
 | OpenAI `gpt-4o-*-transcribe` [^4],[^5] | ✅ | |  | ✅ |
-| ElevenLabs `scribe_v1` [^3] | ✅ |  |  ✅ | |
+| ElevenLabs `scribe_v1`,`scribe_v2` [^3] | ✅ |  |  ✅ | |
 
 [^1]: <https://huggingface.co/akashmjn/tinydiarize-whisper.cpp>
 [^2]: <https://platform.openai.com/docs/models/whisper-1>
