@@ -29,7 +29,7 @@ COPY . .
 # Make whisper with CUDA support
 ENV CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH}
 ENV GGML_CUDA=1
-RUN make clean && make gowhisper
+RUN make clean && make -j1 
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime

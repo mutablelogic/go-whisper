@@ -35,11 +35,11 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
-    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-latest' || matrix.arch == 'arm64' && 'nx1' }} # Builds on NX1 self-hosted
+    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || matrix.arch == 'arm64' && 'ubuntu-24.04-arm' }} # Builds on NX1 self-hosted
     env:
       ARCH: ${{ matrix.arch }}
       OS: linux
-      DOCKER_FILE: etc/Dockerfile.cuda
+      DOCKER_FILE: etc/Dockerfile
       DOCKER_REGISTRY: ghcr.io/mutablelogic
     steps:
       - name: Install git

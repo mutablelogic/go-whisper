@@ -6,6 +6,6 @@ package whisper
 // CGO
 
 /*
-#cgo pkg-config: libwhisper-vulkan
+#cgo pkg-config: libwhisper-vulkan vulkan
 */
 import "C"

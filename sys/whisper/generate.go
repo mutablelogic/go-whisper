@@ -15,5 +15,5 @@ import "C"
 //go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --cflags "-I$DOLLAR{prefix}/include" libwhisper.pc
 //go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --cflags "-fopenmp" --libs "-L$DOLLAR{prefix}/lib -L$DOLLAR{prefix}/lib64 -lwhisper -lggml -lggml-base -lggml-cpu -lgomp -lm -lstdc++" libwhisper-linux.pc
 //go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --libs "-L$DOLLAR{prefix}/lib -L$DOLLAR{prefix}/lib64 -lwhisper -lggml -lggml-base -lggml-cpu -lggml-blas -lggml-metal -lm -lstdc++ -framework Accelerate -framework Metal -framework Foundation -framework CoreGraphics" libwhisper-darwin.pc
-//go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --libs "-L$DOLLAR{prefix}/lib -L$DOLLAR{prefix}/lib64 -lggml-cuda" libwhisper-cuda.pc
-//go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --libs "-L$DOLLAR{prefix}/lib -L$DOLLAR{prefix}/lib64 -lvulkan -lggml-vulkan" libwhisper-vulkan.pc
+//go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --libs "-L$DOLLAR{prefix}/lib -L$DOLLAR{prefix}/lib64 -L/usr/local/cuda/lib64/stubs -lggml-cuda" libwhisper-cuda.pc
+//go:generate go run ../pkg-config --version "0.0.0" --prefix "${PREFIX}" --libs "-L$DOLLAR{prefix}/lib -L$DOLLAR{prefix}/lib64 -lggml-vulkan" libwhisper-vulkan.pc
