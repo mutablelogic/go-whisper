@@ -28,6 +28,9 @@ BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)"
 TEST_FLAGS = -v
 CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF
 
+# Build parallelism
+BUILD_JOBS ?= -j
+
 # Target specific CUDA architectures
 # https://developer.nvidia.com/cuda/gpus
 ifeq ($(ARCH),arm64)
@@ -37,12 +40,13 @@ ifeq ($(ARCH),amd64)
     CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="75;86;89"
 endif
 
-
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
+# and reduce the parallel build jobs to 1 for cmake
 ifeq ($(GGML_CUDA),1)
 	TEST_FLAGS += -tags cuda
 	BUILD_FLAGS += -tags cuda
 	CMAKE_FLAGS += -DGGML_CUDA=ON
+	BUILD_JOBS = -j1
 endif
 
 # If GGML_VULKAN is set, then add a vulkan tag for the go ${BUILD FLAGS}
@@ -89,7 +93,7 @@ test-sys: generate libwhisper
 libwhisper: mkdir submodule cmake-dep 
 	@echo "Making libwhisper with ${CMAKE_FLAGS}"
 	@${CMAKE} -S third_party/whisper.cpp -B ${BUILD_DIR} -DCMAKE_BUILD_TYPE=Release ${CMAKE_FLAGS}
-	@${CMAKE} --build ${BUILD_DIR} -j1 --config Release
+	@${CMAKE} --build ${BUILD_DIR} ${BUILD_JOBS} --config Release
 	@${CMAKE} --install ${BUILD_DIR} --prefix $(shell realpath ${PREFIX})
 
 # make ffmpeg libraries and install at ${PREFIX}
