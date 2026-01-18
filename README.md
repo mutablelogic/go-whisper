@@ -13,6 +13,7 @@ A unified speech-to-text and translation service that provides a single API for 
 - **Command Line Interface**: Downloadable CLI for communicating with the server for  audio processing
 - **HTTP API Server**: RESTful API for transcription and translation service
 - **Docker Support**: Pre-built GPU-enabled containers for easy deployment of the service
+- **Download and Realtime Transcription** with JSON, SRT, VTT, and text output formats
 
 ### Performance & Acceleration
 
@@ -44,8 +45,8 @@ export GOWHISPER_ADDR="localhost:8081"
 # Download a local model
 gowhisper download ggml-medium-q5_0.bin
 
-# Transcribe with local model
-gowhisper transcribe ggml-medium-q5_0 your-audio.wav
+# Transcribe with local model to SRT
+gowhisper transcribe ggml-medium-q5_0 your-audio.wav --format srt
 
 # Or use OpenAI (requires OPENAI_API_KEY)
 gowhisper transcribe whisper-1 your-audio.wav
