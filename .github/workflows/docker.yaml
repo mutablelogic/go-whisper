@@ -1,4 +1,4 @@
-name: Build docker container on publish
+name: Build Docker Containers
 on:
   release:
     types: [created, edited]
