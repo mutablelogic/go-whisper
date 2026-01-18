@@ -3,38 +3,25 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/mutablelogic/go-whisper.svg)](https://pkg.go.dev/github.com/mutablelogic/go-whisper)
 [![License](https://img.shields.io/badge/license-Apache-blue.svg)](LICENSE)
 
-A unified speech-to-text and translation service that provides a single API for multiple AI providers:
+A unified speech-to-text and translation service that provides a single API for multiple providers:
 
 - **Local Models**: High-performance transcription using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) with GPU acceleration
 - **Commercial Models**: Cloud-based transcription using OpenAI Whisper and ElevenLabs APIs with advanced features like speaker diarization
 
-Whether you need privacy-focused local processing or cloud-based convenience, go-whisper provides a consistent interface for all your speech processing needs.
-
 ## Features
 
-### Multi-Provider Support
-
-- **Local Processing**: Privacy-focused transcription using whisper.cpp models
-- **OpenAI Integration**: Access to OpenAI's Whisper API for cloud processing
-- **ElevenLabs Integration**: Advanced features like speaker diarization and SRT subtitle generation
-
-### Flexible Deployment
-
-- **Command Line Interface**: Simple CLI for direct audio processing
-- **HTTP API Server**: RESTful API for transcription and translation services
-- **Docker Support**: Pre-built containers for easy deployment
+- **Command Line Interface**: Downloadable CLI for communicating with the server for  audio processing
+- **HTTP API Server**: RESTful API for transcription and translation service
+- **Docker Support**: Pre-built GPU-enabled containers for easy deployment of the service
 
 ### Performance & Acceleration
 
 - **GPU Support**: CUDA, Vulkan, and Metal (macOS) acceleration for local models
 - **Model Management**: Download, cache, and manage models locally
-- **Efficient Processing**: Optimized for both batch and real-time transcription
-
-For detailed feature documentation, see the [Features](doc/features.md) document.
 
 ## Quick Start
 
-Get started quickly with Docker (recommended for most users):
+Get started quickly with Docker as the server:
 
 ```bash
 # Set API keys for commercial providers (optional)
@@ -44,11 +31,13 @@ export ELEVENLABS_API_KEY="your-key-here"
 # Start the server
 docker volume create whisper
 docker run -d --name whisper-server \
-  --env OPENAI_API_KEY \
-  --env ELEVENLABS_API_KEY \
-  -v whisper:/data -p 8081:8081 \
-  ghcr.io/mutablelogic/go-whisper:latest
+  --env OPENAI_API_KEY --env ELEVENLABS_API_KEY \
+  -v whisper:/data -p 8081:8081 ghcr.io/mutablelogic/go-whisper
+```
 
+Download the `gowhisper` CLI from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or build from source:
+
+```bash
 # Set the server address for CLI commands
 export GOWHISPER_ADDR="localhost:8081"
 
@@ -62,9 +51,29 @@ gowhisper transcribe ggml-medium-q5_0 your-audio.wav
 gowhisper transcribe whisper-1 your-audio.wav
 ```
 
-**Note**: Download the `gowhisper` CLI from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or build from source (see Building section).
-
 The following sections provide detailed information about deployment, CLI usage, and building from source. For HTTP API documentation, see the [API Reference](doc/API.md).
+
+## Model Support
+
+- *Transcription* is the process of converting spoken language into written text, in any language supported by the model.
+- *Translation* is the process of converting spoken language into written text in English, regardless of the original language.
+- *Diarization* is the process of identifying and separating different speakers in an audio recording.
+- *Realtime* processing allows for transcription or translation of audio streams to be returned as it is being processed, rather than waiting for the entire audio file to be processed before returning results.
+
+| Model(s) | Transcription | Translation to English | Diarization | Realtime |
+|----------|---------------|-------------|-------------|-----------|
+| GGML Whisper `*-en.bin` | ✅ |  |  | ✅ |
+| GGML Whisper `*.bin` | ✅ | ✅ |  | ✅ |
+| GGML Whisper `ggml-small.en-tdrz.bin`[^1] | ✅ |  |  ✅ | ✅ |
+| OpenAI `whisper-1` [^2] | ✅ | ✅ |  | |
+| OpenAI `gpt-4o-*-transcribe` [^4],[^5] | ✅ | |  | ✅ |
+| ElevenLabs `scribe_v1`,`scribe_v2` [^3] | ✅ |  |  ✅ | |
+
+[^1]: <https://huggingface.co/akashmjn/tinydiarize-whisper.cpp>
+[^2]: <https://platform.openai.com/docs/models/whisper-1>
+[^3]: <https://elevenlabs.io/docs/models#scribe-v1>
+[^4]: <https://platform.openai.com/docs/models/gpt-4o-transcribe>
+[^5]: <https://platform.openai.com/docs/models/gpt-4o-mini-transcribe>
 
 ## Docker Deployment
 
@@ -95,14 +104,14 @@ Use `gowhisper --help` or `gowhisper <command> --help` for more options and deta
 
 - `cmd` contains the command-line tool, which can also be run as an OpenAPI-compatible HTTP server
 - `pkg` contains the `whisper` service and client:
-  - `whisper/` - Core whisper.cpp bindings and local transcription
-  - `openai/` - OpenAI Whisper API client integration
-  - `elevenlabs/` - ElevenLabs API client integration
-  - `httpclient/` - HTTP client utilities
-  - `httphandler/` - HTTP server handlers and routing
-  - `schema/` - API schema definitions and types
-  - `manager.go` - Service orchestration and provider routing
-- `sys` contains the `whisper` bindings to the `whisper.cpp` library
+  - [`whisper/`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg/whisper) - Core whisper.cpp bindings and local transcription
+  - [`openai/`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg/openai) - OpenAI Whisper API client integration
+  - [`elevenlabs/`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg/elevenlabs) - ElevenLabs API client integration
+  - [`httpclient/`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg/httpclient) - HTTP client utilities
+  - [`httphandler/`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg/httphandler) - HTTP server handlers and routing
+  - [`schema/`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg/schema) - API schema definitions and types
+  - [`manager.go`](https://pkg.go.dev/github.com/mutablelogic/go-whisper/pkg) - Service orchestration and provider routing
+- `sys` contains the [bindings](https://pkg.go.dev/github.com/mutablelogic/go-whisper/sys/whisper) to the `whisper.cpp` library
 - `third_party` is a submodule for the whisper.cpp source, and ffmpeg bindings
 
 ### Building

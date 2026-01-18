@@ -1,7 +1,12 @@
 
 # Features
 
-| Model(s) | Transcription | Translation to English | Diarization | Streaming |
+* *Transcription* is the process of converting spoken language into written text, in any language supported by the model.
+* *Translation* is the process of converting spoken language into written text in English, regardless of the original language.
+* *Diarization* is the process of identifying and separating different speakers in an audio recording.
+* *Realtime* processing allows for transcription or translation of audio streams to be returned as it is being processed, rather than waiting for the entire audio file to be processed before returning results.
+
+| Model(s) | Transcription | Translation to English | Diarization | Realtime |
 |----------|---------------|-------------|-------------|-----------|
 | GGML Whisper `*-en.bin` | ✅ |  |  | ✅ |
 | GGML Whisper `*.bin` | ✅ | ✅ |  | ✅ |
