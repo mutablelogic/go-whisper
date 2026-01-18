@@ -89,7 +89,7 @@ test-sys: generate libwhisper
 libwhisper: mkdir submodule cmake-dep 
 	@echo "Making libwhisper with ${CMAKE_FLAGS}"
 	@${CMAKE} -S third_party/whisper.cpp -B ${BUILD_DIR} -DCMAKE_BUILD_TYPE=Release ${CMAKE_FLAGS}
-	@${CMAKE} --build ${BUILD_DIR} -j --config Release
+	@${CMAKE} --build ${BUILD_DIR} -j1 --config Release
 	@${CMAKE} --install ${BUILD_DIR} --prefix $(shell realpath ${PREFIX})
 
 # make ffmpeg libraries and install at ${PREFIX}

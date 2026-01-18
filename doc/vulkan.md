@@ -29,11 +29,9 @@ docker run --rm --name gowhisper -p 8081:8081 --gpus all ghcr.io/mutablelogic/go
 
 # NVIDIA Jetson/Tegra
 docker run --rm --name gowhisper -p 8081:8081 --runtime nvidia \
-  --device=/dev/nvhost-ctrl --device=/dev/nvhost-ctrl-gpu \
-  --device=/dev/nvhost-prof-gpu --device=/dev/nvmap \
-  --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
+  --device=/dev/nvhost-ctrl-gpu --device=/dev/nvhost-prof-gpu --device=/dev/nvmap --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
   -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
-  -v /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d:ro \
+  -v /etc/vulkan/icd.d:/etc/vulkan/icd.d:ro \
   ghcr.io/mutablelogic/go-whisper run --debug
 
 # AMD/Intel/Raspberry Pi
@@ -55,11 +53,9 @@ docker run --rm -it --gpus all \
 
 # NVIDIA Jetson/Tegra
 docker run --rm -it --runtime nvidia \
-  --device=/dev/nvhost-ctrl-gpu \
-  --device=/dev/nvhost-prof-gpu --device=/dev/nvmap \
-  --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
+  --device=/dev/nvhost-ctrl-gpu --device=/dev/nvhost-prof-gpu --device=/dev/nvmap --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
   -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
-  -v /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d:ro \
+  -v /etc/vulkan/icd.d:/etc/vulkan/icd.d:ro \
   --entrypoint vulkaninfo \
   ghcr.io/mutablelogic/go-whisper --summary
 
