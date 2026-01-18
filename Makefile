@@ -29,9 +29,14 @@ TEST_FLAGS = -v
 CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF
 
 # Github Action runners
+# https://developer.nvidia.com/cuda/gpus
 ifeq ($(ARCH),arm64)
-    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a
+    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="87"
 endif
+ifeq ($(ARCH),amd64)
+    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="86;89"
+endif
+
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
 ifeq ($(GGML_CUDA),1)
