@@ -1,4 +1,4 @@
-ARG BASE_TAG=22.04
+ARG BASE_TAG=24.04
 ARG BASE_DEV_CONTAINER=ubuntu:${BASE_TAG}
 ARG BASE_RUN_CONTAINER=ubuntu:${BASE_TAG}
 ARG GO_VERSION=1.25.6
@@ -14,7 +14,7 @@ ARG OS
 RUN apt -y update \
     && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
     && apt install -y libfreetype6-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libdav1d-dev libnuma-dev \
-    && apt install -y libvulkan-dev shaderc
+    && apt install -y libvulkan-dev glslc
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
@@ -32,7 +32,7 @@ RUN make clean && make -j1
 FROM ${BASE_RUN_CONTAINER} AS runtime
 RUN apt -y update \
     && apt install -y ca-certificates libgomp1 \
-    && apt install -y libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx7 libx264-163 libx265-199 libdav1d5 libnuma1 \
+    && apt install -y libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx9 libx264-164 libx265-199 libdav1d7 libnuma1 \
     && apt install -y libvulkan1 vulkan-tools    
 
 # Copy built gowhisper binary
