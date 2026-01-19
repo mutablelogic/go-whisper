@@ -11,12 +11,9 @@ A unified speech-to-text and translation service that provides a single API for 
 ## Features
 
 - **Command Line Interface**: Downloadable CLI for communicating with the server for  audio processing
+- **Download and Realtime Transcription** with JSON, SRT, VTT, and text output formats
 - **HTTP API Server**: RESTful API for transcription and translation service
 - **Docker Support**: Pre-built GPU-enabled containers for easy deployment of the service
-- **Download and Realtime Transcription** with JSON, SRT, VTT, and text output formats
-
-### Performance & Acceleration
-
 - **GPU Support**: CUDA, Vulkan, and Metal (macOS) acceleration for local models
 - **Model Management**: Download, cache, and manage models locally
 
@@ -161,6 +158,10 @@ repository for more information:
 > **whisper.cpp**\
 > [https://github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp)\
 > Copyright (c) The ggml authors
+>
+> **go-media**\
+> [https://github.com/mutablelogic/go-media/](https://github.com/mutablelogic/go-media/)
+> Copyright (c) 2021-2026 David Thorpe, All rights reserved.
 >
 > **ffmpeg**\
 > [https://ffmpeg.org/](https://ffmpeg.org/)\
