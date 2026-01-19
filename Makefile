@@ -38,6 +38,7 @@ ifeq ($(GGML_CUDA),1)
 	TEST_FLAGS += -tags cuda
 	BUILD_FLAGS += -tags cuda
 	CMAKE_FLAGS += -DGGML_CUDA=ON
+	BUILD_JOBS = -j2
 	DOCKER_FILE = etc/Dockerfile.cuda
 	DOCKER_SUFFIX = -cuda
 	ifeq ($(ARCH),arm64)
