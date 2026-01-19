@@ -62,7 +62,7 @@ The following sections provide detailed information about deployment, CLI usage,
 |----------|---------------|-------------|-------------|-----------|
 | GGML Whisper `*-en.bin` | ✅ |  |  | ✅ |
 | GGML Whisper `*.bin` | ✅ | ✅ |  | ✅ |
-| GGML Whisper `ggml-small.en-tdrz.bin`[^1] | ✅ |  |  ✅ | ✅ |
+| GGML Whisper `ggml-small.en-tdrz.bin`[^1] | ✅ |  | ✅ | ✅ |
 | OpenAI `whisper-1` [^2] | ✅ | ✅ |  | |
 | OpenAI `gpt-4o-*-transcribe` [^4],[^5] | ✅ | |  | ✅ |
 | ElevenLabs `scribe_v1`,`scribe_v2` [^3] | ✅ |  |  ✅ | |
