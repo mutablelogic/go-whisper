@@ -53,6 +53,8 @@ The following sections provide detailed information about deployment, CLI usage,
 
 ## Model Support
 
+Available local models can be downloaded from [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp) using the `gowhisper download-model` command.
+
 - *Transcription* is the process of converting spoken language into written text, in any language supported by the model.
 - *Translation* is the process of converting spoken language into written text in English, regardless of the original language.
 - *Diarization* is the process of identifying and separating different speakers in an audio recording.
