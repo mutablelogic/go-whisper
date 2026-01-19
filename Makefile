@@ -189,4 +189,4 @@ clean:
 	@echo "Cleaning build artifacts"
 	@rm -rf ${BUILD_DIR}
 	@${GO} clean -cache
-	@test -d third_party/go-media && make -C third_party/go-media clean || true
+	@test -f third_party/go-media/Makefile && make -C third_party/go-media clean || true
