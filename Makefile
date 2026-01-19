@@ -52,7 +52,7 @@ endif
 ifeq ($(GGML_VULKAN),1)
 	TEST_FLAGS += -tags vulkan 
 	BUILD_FLAGS += -tags vulkan
-	CMAKE_FLAGS += -DGGML_VULKAN=ON
+	CMAKE_FLAGS += -DGGML_VULKAN=ON -DGGML_NATIVE=OFF
 	DOCKER_FILE = etc/Dockerfile.vulkan
 endif
 
