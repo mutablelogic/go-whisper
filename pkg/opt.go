@@ -5,6 +5,8 @@ import (
 
 	// Packages
 	goclient "github.com/mutablelogic/go-client"
+	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	trace "go.opentelemetry.io/otel/trace"
 )
 
@@ -15,6 +17,8 @@ type opts struct {
 	elevenLabsKey string
 	openAIKey     string
 	clientOpts    []goclient.ClientOpt
+	segOpts       []segmenter.Opt
+	whisperopts   []whisper.Opt
 	tracer        trace.Tracer
 }
 
@@ -39,27 +43,46 @@ func OptOpenAIKey(key string) Opt {
 	}
 }
 
-// OptClientOpts appends client options applied to HTTP-based providers
+// WithClientOpts appends client options applied to HTTP-based providers
 // (ElevenLabs and OpenAI). This is useful for setting timeouts, tracing,
 // headers, and other transport-level behaviors shared across providers.
-func OptClientOpts(clientOpts ...goclient.ClientOpt) Opt {
+func WithClientOpts(clientOpts ...goclient.ClientOpt) Opt {
 	return func(o *opts) error {
 		o.clientOpts = append(o.clientOpts, clientOpts...)
 		return nil
 	}
 }
 
-// OptClientTimeout is a convenience wrapper to set the HTTP client timeout for
-// ElevenLabs and OpenAI requests.
-func OptClientTimeout(d time.Duration) Opt {
-	return OptClientOpts(goclient.OptTimeout(d))
+// WithSegmenterOpt appends segmenter options applied to the audio segmenter
+// used during transcription and translation.
+func WithSegmenterOpt(segmenterOpts ...segmenter.Opt) Opt {
+	return func(o *opts) error {
+		o.segOpts = append(o.segOpts, segmenterOpts...)
+		return nil
+	}
 }
 
-// OptTracer sets the OpenTelemetry tracer for distributed tracing of
+// WithWhisperOpt appends whisper options applied to the whisper manager
+// used during transcription and translation.
+func WithWhisperOpt(whisperOpts ...whisper.Opt) Opt {
+	return func(o *opts) error {
+		o.whisperopts = append(o.whisperopts, whisperOpts...)
+		return nil
+	}
+}
+
+// WithClientTimeout is a convenience wrapper to set the HTTP client timeout for
+// ElevenLabs and OpenAI requests.
+func WithClientTimeout(d time.Duration) Opt {
+	return WithClientOpts(goclient.OptTimeout(d))
+}
+
+// WithTracer sets the OpenTelemetry tracer for distributed tracing of
 // transcription, translation, and model operations across all providers.
-func OptTracer(tracer trace.Tracer) Opt {
+func WithTracer(tracer trace.Tracer) Opt {
 	return func(o *opts) error {
 		o.tracer = tracer
+		o.whisperopts = append(o.whisperopts, whisper.OptTracer(tracer))
 		return nil
 	}
 }

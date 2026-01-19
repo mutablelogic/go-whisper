@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	// Packages
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
@@ -12,7 +13,9 @@ import (
 
 type opt struct {
 	schema.TranscribeMultipartRequest
-	format FormatType
+	format           FormatType
+	segmentCallback  func(*schema.Segment) error
+	progressCallback func(*schema.Event) error
 }
 
 // Opt is an option to set on the client request.
@@ -64,14 +67,6 @@ func WithDiarize(diarize bool) Opt {
 	}
 }
 
-// WithStream enables streaming response.
-func WithStream(stream bool) Opt {
-	return func(o *opt) error {
-		o.Stream = &stream
-		return nil
-	}
-}
-
 // WithFilename sets an optional filename with extension for the audio file.
 // Only the base filename (not the full path) will be used.
 func WithFilename(filename string) Opt {
@@ -104,6 +99,24 @@ func WithLanguage(language string) Opt {
 		if language != "" {
 			o.Language = &language
 		}
+		return nil
+	}
+}
+
+// WithSegmentCallback sets a callback function to receive segments as they are processed.
+// This enables streaming support for transcription/translation.
+func WithSegmentCallback(callback func(*schema.Segment) error) Opt {
+	return func(o *opt) error {
+		o.segmentCallback = callback
+		return nil
+	}
+}
+
+// WithProgressCallback sets a callback function to receive streaming events.
+// This enables streaming support for downloads and other operations.
+func WithProgressCallback(callback func(*schema.Event) error) Opt {
+	return func(o *opt) error {
+		o.progressCallback = callback
 		return nil
 	}
 }

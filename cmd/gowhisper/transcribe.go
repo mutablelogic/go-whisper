@@ -76,7 +76,28 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 	default:
 		return fmt.Errorf("unsupported format: %s", cmd.Format)
 	}
-	opts = append(opts, httpclient.WithFormat(format))
+
+	// Print VTT header if needed
+	if format == httpclient.FormatVTT {
+		fmt.Print("WEBVTT\n\n")
+	}
+
+	// Add real-time segment printing callback
+	opts = append(opts, httpclient.WithSegmentCallback(func(seg *schema.Segment) error {
+		if seg != nil {
+			switch format {
+			case httpclient.FormatVTT:
+				seg.WriteVTT(os.Stdout, 0)
+			case httpclient.FormatSRT:
+				seg.WriteSRT(os.Stdout, 0)
+			default:
+				// For text and JSON, print text representation
+				seg.WriteText(os.Stdout)
+			}
+			os.Stdout.Sync() // Ensure output is flushed
+		}
+		return nil
+	}))
 
 	// Transcribe
 	var result *schema.Transcription
@@ -85,37 +106,35 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 		return err
 	}
 
-	// Print result based on format
-	switch format {
-	case httpclient.FormatJSON:
-		fmt.Println(result)
-	case httpclient.FormatVTT:
-		if len(result.Segments) > 0 {
-			// Client-side formatting from segments
-			fmt.Print("WEBVTT\n\n")
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteVTT(os.Stdout, 0)
+	// If segments were not printed via streaming, print from result
+	if len(result.Segments) > 0 {
+		switch format {
+		case httpclient.FormatVTT:
+			// If header wasn't printed yet, print it now
+			if len(result.Segments) > 0 {
+				for _, seg := range result.Segments {
+					if seg != nil {
+						seg.WriteVTT(os.Stdout, 0)
+					}
 				}
 			}
-		} else {
-			// Server already formatted it
-			fmt.Print(result.Text)
-		}
-	case httpclient.FormatSRT:
-		if len(result.Segments) > 0 {
-			// Client-side formatting from segments
+		case httpclient.FormatSRT:
 			for _, seg := range result.Segments {
 				if seg != nil {
 					seg.WriteSRT(os.Stdout, 0)
 				}
 			}
-		} else {
-			// Server already formatted it
-			fmt.Print(result.Text)
+		case httpclient.FormatJSON:
+			fmt.Println(result)
+		default:
+			for _, seg := range result.Segments {
+				if seg != nil {
+					seg.WriteText(os.Stdout)
+				}
+			}
 		}
-	default:
-		// For text and other formats, print the formatted text from server
+	} else if result.Text != "" {
+		// Fallback to formatted text from server
 		fmt.Print(result.Text)
 	}
 	return nil

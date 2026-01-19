@@ -96,10 +96,40 @@ func (c *Client) Translate(ctx context.Context, model string, audio io.Reader, o
 		accept = string(opt.format)
 	}
 
+	// If streaming callback provided, request text/event-stream
+	if opt.segmentCallback != nil {
+		accept = "text/event-stream"
+	}
+
 	// Create multipart payload
 	payload, err := client.NewMultipartRequest(req, accept)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
+	}
+
+	// If streaming callback provided, handle streaming
+	if opt.segmentCallback != nil {
+		var opts []client.RequestOpt
+		opts = append(opts, client.OptPath("translate"))
+		opts = append(opts, client.OptReqHeader("Accept", "text/event-stream"))
+		opts = append(opts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
+			// Parse segment if it's a delta event
+			if evt.Event == schema.TranscribeStreamDeltaType {
+				var segment schema.Segment
+				if err := evt.Json(&segment); err == nil {
+					if err := opt.segmentCallback(&segment); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}))
+		var response translationResponse
+		if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
+			return nil, err
+		}
+		// For streaming, return the transcription (segments sent via callback)
+		return &response.Transcription, nil
 	}
 
 	// Perform request using custom unmarshaler

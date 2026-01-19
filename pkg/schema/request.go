@@ -13,7 +13,6 @@ type TranslateRequest struct {
 	Model       string   `json:"model" help:"Model ID to use for translation"`
 	Prompt      *string  `json:"prompt,omitempty" help:"Text to guide the model's style"`
 	Temperature *float64 `json:"temperature,omitempty" help:"Sampling temperature (0-1)"`
-	Stream      *bool    `json:"stream,omitempty" help:"Enable streaming response"`
 	Diarize     *bool    `json:"diarize,omitempty" help:"Identify and separate speakers"`
 	Filename    *string  `json:"filename,omitempty" help:"Optional filename with extension for the audio file"`
 }

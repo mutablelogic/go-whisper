@@ -71,7 +71,7 @@ func (c *Client) DownloadModel(ctx context.Context, id string, progressFn func(c
 		opts = append(opts, client.OptReqHeader("Accept", "text/event-stream"))
 		opts = append(opts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
 			switch evt.Event {
-			case "progress":
+			case schema.DownloadStreamProgressType:
 				// Parse progress data
 				var progress struct {
 					Current uint64  `json:"current"`
@@ -81,12 +81,12 @@ func (c *Client) DownloadModel(ctx context.Context, id string, progressFn func(c
 				if err := evt.Json(&progress); err == nil {
 					progressFn(progress.Current, progress.Total)
 				}
-			case "done":
+			case schema.DownloadStreamDoneType:
 				// Parse final model data - populate response
 				if err := evt.Json(&response); err != nil {
 					return fmt.Errorf("failed to parse model data: %w", err)
 				}
-			case "error":
+			case schema.DownloadStreamErrorType:
 				return fmt.Errorf("download error: %s", evt.Data)
 			}
 			return nil

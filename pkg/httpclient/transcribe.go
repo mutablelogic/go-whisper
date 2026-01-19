@@ -88,10 +88,46 @@ func (c *Client) Transcribe(ctx context.Context, model string, audio io.Reader, 
 		accept = string(opt.format)
 	}
 
+	// If streaming callback provided, request text/event-stream
+	if opt.segmentCallback != nil {
+		accept = "text/event-stream"
+	}
+
 	// Create multipart payload
 	payload, err := client.NewMultipartRequest(&opt.TranscribeMultipartRequest, accept)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
+	}
+
+	// If streaming callback provided, handle streaming
+	if opt.segmentCallback != nil {
+		var opts []client.RequestOpt
+		opts = append(opts, client.OptPath("transcribe"))
+		opts = append(opts, client.OptReqHeader("Accept", "text/event-stream"))
+		opts = append(opts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
+			// Debug: print event info
+			fmt.Fprintf(os.Stderr, "DEBUG: Received event: %q\n", evt.Event)
+			
+			// Parse segment if it's a delta event
+			if evt.Event == schema.TranscribeStreamDeltaType {
+				var segment schema.Segment
+				if err := evt.Json(&segment); err != nil {
+					fmt.Fprintf(os.Stderr, "DEBUG: Failed to parse segment: %v\n", err)
+					return nil
+				}
+				fmt.Fprintf(os.Stderr, "DEBUG: Invoking callback with segment: %v\n", segment.Text)
+				if err := opt.segmentCallback(&segment); err != nil {
+					return err
+				}
+			}
+			return nil
+		}))
+		var response transcriptionResponse
+		if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
+			return nil, err
+		}
+		// For streaming, return the accumulated result would be sent via callback
+		return &response.Transcription, nil
 	}
 
 	// Perform request using custom unmarshaler

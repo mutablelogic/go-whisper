@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(tmpDir)
 
 	// Create manager once for all tests
-	testManager, err = pkg.New(tmpDir, nil)
+	testManager, err = pkg.New(tmpDir)
 	if err != nil {
 		panic(err)
 	}

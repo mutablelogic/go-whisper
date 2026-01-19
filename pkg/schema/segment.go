@@ -21,6 +21,11 @@ type Segment struct {
 	SpeakerTurn bool      `json:"speaker_turn,omitempty"` // TODO
 }
 
+// SegmentWriter defines an interface for writing segments in realtime
+type SegmentWriter interface {
+	Write(seg *Segment)
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // STRINGIFY
 
