@@ -107,7 +107,7 @@ func (c *Client) Transcribe(ctx context.Context, model string, audio io.Reader, 
 		opts = append(opts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
 			// Debug: print event info
 			fmt.Fprintf(os.Stderr, "DEBUG: Received event: %q\n", evt.Event)
-			
+
 			// Parse segment if it's a delta event
 			if evt.Event == schema.TranscribeStreamDeltaType {
 				var segment schema.Segment
