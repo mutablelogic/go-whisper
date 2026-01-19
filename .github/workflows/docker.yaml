@@ -1,7 +1,7 @@
 name: Build Docker Containers
 on:
   release:
-    types: [created, edited]
+    types: [released]
   workflow_dispatch:
     inputs:
       tag:
