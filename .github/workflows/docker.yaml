@@ -29,18 +29,18 @@ jobs:
           else
             TAG="$(git describe --tags)" && echo "tag=${TAG#v}" >> $GITHUB_OUTPUT
           fi
-  build:
-    name: Build
+  vulkan:
+    name: Build Vulkan
     needs: var
     strategy:
       matrix:
         arch: [amd64, arm64]
-    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || matrix.arch == 'arm64' && 'ubuntu-24.04-arm' }} # Builds on NX1 self-hosted
+    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || matrix.arch == 'arm64' && 'ubuntu-24.04-arm' }}
     env:
       ARCH: ${{ matrix.arch }}
       OS: linux
-      DOCKER_FILE: etc/Dockerfile
       DOCKER_REGISTRY: ghcr.io/mutablelogic
+      GGML_VULKAN: 1
     steps:
       - name: Install git
         run: |
@@ -62,16 +62,49 @@ jobs:
         run: |
           git checkout v${{ needs.var.outputs.tag }}
           make docker && make docker-push
-  manifest:
-    name: Manifest
+  cuda:
+    name: Build CUDA
+    needs: var
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || matrix.arch == 'arm64' && 'ubuntu-24.04-arm' }}
+    env:
+      ARCH: ${{ matrix.arch }}
+      OS: linux
+      DOCKER_REGISTRY: ghcr.io/mutablelogic
+      GGML_CUDA: 1
+    steps:
+      - name: Install git
+        run: |
+          sudo apt -y update
+          sudo apt -y install build-essential git
+          git config --global advice.detachedHead false
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and Push
+        id: build
+        run: |
+          git checkout v${{ needs.var.outputs.tag }}
+          make docker && make docker-push
+  vulkan-manifest:
+    name: Vulkan Manifest
     needs:
       - var
-      - build
+      - vulkan
     strategy:
       matrix:
         include:
           - tag: ${{ needs.var.outputs.tag }}
-          - tag: latest # TODO: Skip this if the event calling is not publishing a release
+          - tag: latest
     runs-on: ubuntu-latest
     steps:
       - name: Login
@@ -97,3 +130,38 @@ jobs:
       - name: Push
         run: |
           docker manifest push ${{ needs.var.outputs.image }}:${{ matrix.tag }}
+  cuda-manifest:
+    name: CUDA Manifest
+    needs:
+      - var
+      - cuda
+    strategy:
+      matrix:
+        include:
+          - tag: ${{ needs.var.outputs.tag }}
+          - tag: latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create
+        run: |
+          docker manifest create ${{ needs.var.outputs.image }}-cuda:${{ matrix.tag }} \
+            --amend ${{ needs.var.outputs.image }}-cuda-linux-amd64:${{ needs.var.outputs.tag }} \
+            --amend ${{ needs.var.outputs.image }}-cuda-linux-arm64:${{ needs.var.outputs.tag }}
+      - name: Annotate
+        run: |
+          docker manifest annotate --arch arm64 --os linux \
+            ${{ needs.var.outputs.image }}-cuda:${{ matrix.tag  }} \
+            ${{ needs.var.outputs.image }}-cuda-linux-arm64:${{ needs.var.outputs.tag }}
+          docker manifest annotate --arch amd64 --os linux \
+            ${{ needs.var.outputs.image }}-cuda:${{ matrix.tag  }} \
+            ${{ needs.var.outputs.image }}-cuda-linux-amd64:${{ needs.var.outputs.tag }}
+          docker manifest push ${{ needs.var.outputs.image }}-cuda:${{ matrix.tag }}
+      - name: Push
+        run: |
+          docker manifest push ${{ needs.var.outputs.image }}-cuda:${{ matrix.tag }}

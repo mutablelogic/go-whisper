@@ -8,11 +8,8 @@ CMAKE=$(shell which cmake)
 ARCH ?= $(shell arch | tr A-Z a-z | sed 's/x86_64/amd64/' | sed 's/i386/amd64/' | sed 's/armv7l/arm/' | sed 's/aarch64/arm64/')
 OS ?= $(shell uname | tr A-Z a-z)
 VERSION ?= $(shell git describe --tags --always | sed 's/^v//')
-DOCKER_REGISTRY ?= ghcr.io/mutablelogic
-DOCKER_FILE ?= etc/Dockerfile
 
-# Set docker tag and other build parameters
-BUILD_TAG := ${DOCKER_REGISTRY}/go-whisper-${OS}-${ARCH}:${VERSION}
+# Build parameters
 ROOT_PATH := $(CURDIR)
 BUILD_DIR ?= "build"
 BUILD_JOBS ?= -j
@@ -29,20 +26,26 @@ BUILD_FLAGS = -ldflags "-s -w $(BUILD_LD_FLAGS)"
 TEST_FLAGS = -v
 CMAKE_FLAGS = -DBUILD_SHARED_LIBS=OFF
 
-# Target specific CUDA architectures
-# https://developer.nvidia.com/cuda/gpus
-ifeq ($(ARCH),arm64)
-    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="87"
-endif
-ifeq ($(ARCH),amd64)
-    CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="75\;86\;89"
-endif
+# Default docker file is non-cuda
+DOCKER_FILE := etc/Dockerfile.vulkan
+DOCKER_SUFFIX := ""
+DOCKER_REGISTRY ?= ghcr.io/mutablelogic
 
 # If GGML_CUDA is set, then add a cuda tag for the go ${BUILD FLAGS}
+# Target specific CUDA architectures
+# https://developer.nvidia.com/cuda/gpus
 ifeq ($(GGML_CUDA),1)
 	TEST_FLAGS += -tags cuda
 	BUILD_FLAGS += -tags cuda
 	CMAKE_FLAGS += -DGGML_CUDA=ON
+	DOCKER_FILE = etc/Dockerfile.cuda
+	DOCKER_SUFFIX = -cuda
+	ifeq ($(ARCH),arm64)
+		CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="87"
+	endif
+	ifeq ($(ARCH),amd64)
+		CMAKE_FLAGS += -DGGML_NATIVE=OFF -DCMAKE_CUDA_ARCHITECTURES="75\;86\;89"
+	endif
 endif
 
 # If GGML_VULKAN is set, then add a vulkan tag for the go ${BUILD FLAGS}
@@ -50,18 +53,19 @@ ifeq ($(GGML_VULKAN),1)
 	TEST_FLAGS += -tags vulkan 
 	BUILD_FLAGS += -tags vulkan
 	CMAKE_FLAGS += -DGGML_VULKAN=ON
+	DOCKER_FILE = etc/Dockerfile.vulkan
 endif
+
+# Docker
+DOCKER_TAG := ${DOCKER_REGISTRY}/go-whisper${DOCKER_SUFFIX}-${OS}-${ARCH}:${VERSION}
 
 # Targets
 all: gowhisper
 
-# Generate the pkg-config files
-generate: mkdir go-tidy libwhisper
-	@echo "Generating pkg-config"
-	@mkdir -p ${BUILD_DIR}/lib/pkgconfig
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig PREFIX="$(shell realpath ${PREFIX})" go generate ./sys/whisper
+#####################################################################
+# BUILD
 
-# Make gowhisper
+# Make gowhisper (includes server run command)
 gowhisper: generate libwhisper libffmpeg
 	@echo "Building gowhisper"
 	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig CGO_LDFLAGS_ALLOW="-(W|D).*" ${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/gowhisper ./cmd/gowhisper
@@ -71,25 +75,11 @@ gowhisper-client:
 	@echo "Building gowhisper-client"
 	@${GO} build ${BUILD_FLAGS} -tags client -o ${BUILD_DIR}/gowhisper ./cmd/gowhisper
 
-
-# Make api
-api: mkdir go-tidy
-	@echo "Building api"
-	@${GO} build ${BUILD_FLAGS} -o ${BUILD_DIR}/api ./cmd/api
-
-# Test whisper
-test: test-sys test-pkg
-
-# Test whisper pkg bindings
-test-pkg: generate libwhisper libffmpeg
-	@echo "Running tests (pkg)"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./pkg/...
-
-# Test whisper bindings
-test-sys: generate libwhisper
-	@echo "Running tests (sys) with ${PREFIX}/lib"
-	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./sys/whisper/...
-
+# Generate the pkg-config files
+generate: mkdir go-tidy libwhisper
+	@echo "Generating pkg-config"
+	@mkdir -p ${BUILD_DIR}/lib/pkgconfig
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig PREFIX="$(shell realpath ${PREFIX})" go generate ./sys/whisper
 
 # make libwhisper and install at ${PREFIX}
 libwhisper: mkdir submodule cmake-dep 
@@ -105,11 +95,30 @@ libffmpeg: mkdir submodule
 	@mkdir -p ${PREFIX}
 	@BUILD_DIR=$(shell realpath ${BUILD_DIR}) PREFIX=$(shell realpath ${PREFIX}) make -C third_party/go-media ffmpeg
 
+#####################################################################
+# TEST
+
+# Test whisper
+test: test-sys test-pkg
+
+# Test whisper pkg bindings
+test-pkg: generate libwhisper libffmpeg
+	@echo "Running tests (pkg)"
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./pkg/...
+
+# Test whisper bindings
+test-sys: generate libwhisper
+	@echo "Running tests (sys) with ${PREFIX}/lib"
+	@PKG_CONFIG_PATH=$(shell realpath ${PREFIX})/lib/pkgconfig ${GO} test ${TEST_FLAGS} ./sys/whisper/...
+
+#####################################################################
+# DOCKER
+
 # Build docker container
 docker: docker-dep submodule
-	@echo build docker image: ${BUILD_TAG} for ${OS}/${ARCH}
+	@echo build docker image: ${DOCKER_TAG} for ${OS}/${ARCH}
 	@${DOCKER} build \
-		--tag ${BUILD_TAG} \
+		--tag ${DOCKER_TAG} \
 		--build-arg ARCH=${ARCH} \
 		--build-arg OS=${OS} \
 		--build-arg SOURCE=${BUILD_MODULE} \
@@ -120,8 +129,11 @@ docker: docker-dep submodule
 
 # Push docker container
 docker-push: docker-dep 
-	@echo push docker image: ${BUILD_TAG}
-	@${DOCKER} push ${BUILD_TAG}
+	@echo push docker image: ${DOCKER_TAG}
+	@${DOCKER} push ${DOCKER_TAG}
+
+#####################################################################
+# THIRD PARTY DEPENDENCIES
 
 # Update submodule to the latest version
 submodule-update: git-dep
@@ -156,6 +168,9 @@ git-dep:
 go-dep:
 	@test -f "${GO}" && test -x "${GO}"  || (echo "Missing go binary" && exit 1)
 
+#####################################################################
+# CLEAN
+
 # Make build directory
 mkdir:
 	@echo Mkdir ${BUILD_DIR}
@@ -174,3 +189,4 @@ clean:
 	@echo "Cleaning build artifacts"
 	@rm -rf ${BUILD_DIR}
 	@${GO} clean -cache
+	@test -d third_party/go-media && make -C third_party/go-media clean || true
