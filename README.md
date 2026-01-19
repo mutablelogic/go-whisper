@@ -112,6 +112,71 @@ Use `gowhisper --help` or `gowhisper <command> --help` for more options and deta
 - `sys` contains the [bindings](https://pkg.go.dev/github.com/mutablelogic/go-whisper/sys/whisper) to the `whisper.cpp` library
 - `third_party` is a submodule for the whisper.cpp source, and ffmpeg bindings
 
+# Architecture
+
+This diagram shows the relationship between clients, the go-whisper server, and backend services.
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+flowchart LR
+    subgraph Client["gowhisper clients"]
+        direction TB
+        CLI["`**cmd/gowhisper**
+        CLI Tool`"]
+        SDK["`**pkg/httpclient**
+        SDK Client`"]
+    end
+
+    subgraph Backend["gowhisper server"]
+        direction TB
+        subgraph Server["HTTP Server"]
+            direction TB
+            API["`**pkg/httphandler**
+            REST API`"]
+            Orch["`**pkg/manager**
+            Orchestrator`"]
+            WS["`**pkg/whisper**
+            Whisper Engine`"]
+            Models["`**pkg/whisper/store**
+            Local Models`"]
+        end
+
+        subgraph Bindings["Native Bindings"]
+            direction TB
+            SysWhisper["`**sys/whisper**
+            whisper.cpp bindings`"]
+            WhisperCpp["`**whisper.cpp**
+            C++ library`"]
+            GoMedia["`**go-media**
+            ffmpeg bindings, audio decoding and segmentation`"]
+            FFmpeg["`**FFmpeg**
+            C libraries`"]
+            SysWhisper --> WhisperCpp
+            GoMedia --> FFmpeg
+        end
+
+        subgraph Cloud["Cloud Services"]
+            direction TB
+            OpenAI["`**pkg/openai**
+            OpenAI API`"]
+            ElevenLabs["`**pkg/elevenlabs**
+            ElevenLabs API`"]
+        end
+    end
+
+    CLI --> API
+    SDK --> API
+    API --> Orch
+    Orch --> WS
+    WS --> Models
+    WS --> SysWhisper
+    WS --> GoMedia
+    Orch --> OpenAI
+    Orch --> ElevenLabs
+
+    style Backend stroke-dasharray: 5 5
+```
+
 ### Building
 
 #### Docker Images
