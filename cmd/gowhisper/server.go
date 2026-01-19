@@ -150,8 +150,13 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 		}
 	}
 
-	// Create a HTTP server
-	server, err := httpserver.New(ctx.HTTP.Addr, router, tlsconfig)
+	// Create a HTTP server with timeouts
+	httpopts := []httpserver.Opt{}
+	if ctx.HTTP.Timeout > 0 {
+		httpopts = append(httpopts, httpserver.WithReadTimeout(ctx.HTTP.Timeout))
+		httpopts = append(httpopts, httpserver.WithWriteTimeout(ctx.HTTP.Timeout))
+	}
+	server, err := httpserver.New(ctx.HTTP.Addr, router, tlsconfig, httpopts...)
 	if err != nil {
 		return err
 	}
