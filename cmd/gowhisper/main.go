@@ -35,7 +35,7 @@ type Globals struct {
 	HTTP struct {
 		Prefix  string        `name:"prefix" help:"HTTP path prefix" default:"/api"`
 		Addr    string        `name:"addr" env:"GOWHISPER_ADDR" help:"HTTP Listen address" default:"localhost:8081"`
-		Timeout time.Duration `name:"timeout" help:"HTTP client timeout" default:"10m"`
+		Timeout time.Duration `name:"timeout" help:"HTTP server read/write timeout" default:"10m"`
 	} `embed:"" prefix:"http."`
 
 	// Open Telemetry options
