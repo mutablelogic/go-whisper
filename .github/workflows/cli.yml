@@ -45,14 +45,9 @@ jobs:
 
       - name: Rename binary for release
         run: |
-          if [ "${{ matrix.goos }}" = "darwin" ]; then
-            mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
-            # Remove quarantine attributes to prevent Gatekeeper issues
-            xattr -c build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }} || true
-          else
-            mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
-          fi
-
+          # Remove quarantine attributes to prevent Gatekeeper issues on darwin
+          # xattr -c build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+          mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
