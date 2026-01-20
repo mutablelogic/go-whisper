@@ -34,7 +34,7 @@ docker run -d --name whisper-server \
   ghcr.io/mutablelogic/go-whisper run
 ```
 
-Download the `gowhisper` CLI from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or build from source:
+You'll then need to run the gowhisper CLI to interact with the server. Download it from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or [build from source](#from-source):
 
 ```bash
 # Set the server address for CLI commands
