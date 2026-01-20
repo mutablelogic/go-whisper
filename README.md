@@ -30,7 +30,8 @@ export ELEVENLABS_API_KEY="your-key-here"
 docker volume create whisper
 docker run -d --name whisper-server \
   --env OPENAI_API_KEY --env ELEVENLABS_API_KEY \
-  -v whisper:/data -p 8081:8081 ghcr.io/mutablelogic/go-whisper
+  -v whisper:/data -p 8081:8081 \
+  ghcr.io/mutablelogic/go-whisper run
 ```
 
 Download the `gowhisper` CLI from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or build from source:
