@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -84,17 +86,25 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 
 	// Add real-time segment printing callback
 	opts = append(opts, httpclient.WithSegmentCallback(func(seg *schema.Segment) error {
-		if seg != nil {
-			switch format {
-			case httpclient.FormatVTT:
-				seg.WriteVTT(os.Stdout, 0)
-			case httpclient.FormatSRT:
-				seg.WriteSRT(os.Stdout, 0)
-			default:
-				// For text and JSON, print text representation
-				seg.WriteText(os.Stdout)
+		switch format {
+		case httpclient.FormatVTT:
+			seg.WriteVTT(os.Stdout, 0)
+		case httpclient.FormatSRT:
+			seg.WriteSRT(os.Stdout, 0)
+		case httpclient.FormatJSON:
+			if seg.Id > 0 {
+				fmt.Println(",")
 			}
-			os.Stdout.Sync() // Ensure output is flushed
+			json, err := json.MarshalIndent(seg, "", "  ")
+			if err != nil {
+				return err
+			} else {
+				json = bytes.TrimSpace(json)
+			}
+			fmt.Print(string(json))
+		default:
+			seg.WriteText(os.Stdout)
+			fmt.Println("")
 		}
 		return nil
 	}))

@@ -2,7 +2,6 @@ package httphandler
 
 import (
 	"net/http"
-	"strings"
 
 	// Packages
 	httprequest "github.com/mutablelogic/go-server/pkg/httprequest"
@@ -43,13 +42,12 @@ func transcribeCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manag
 		return httpresponse.Error(w, httpresponse.ErrBadRequest.With("missing or invalid audio field"))
 	}
 
-	// Check if streaming is requested via Accept header
-	acceptHeader := r.Header.Get("Accept")
-	wantsStream := strings.Contains(acceptHeader, types.ContentTypeTextStream)
-
 	// Create text stream if requested
 	var stream *httpresponse.TextStream
-	if wantsStream {
+	mimetype, err := types.ParseContentType(r.Header.Get(types.ContentAcceptHeader))
+	if err != nil {
+		return httpresponse.Error(w, httpresponse.ErrBadRequest.With("invalid Accept header"), err.Error())
+	} else if mimetype == types.ContentTypeTextStream {
 		stream = httpresponse.NewTextStream(w)
 		if stream == nil {
 			return httpresponse.Error(w, httpresponse.ErrInternalError.With("cannot create text stream"))
