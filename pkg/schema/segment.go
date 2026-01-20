@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -47,6 +49,13 @@ func (seg *Segment) WriteSRT(w io.Writer, offset time.Duration) {
 }
 
 func (seg *Segment) WriteVTT(w io.Writer, offset time.Duration) {
+	// Write header if first segment
+	if seg.Id == 0 {
+		// Note: VTT header must be followed by a blank line, so we add \n after it
+		fmt.Fprintln(w, "WEBVTT\n")
+	}
+
+	// Write text segment
 	text := strings.TrimSpace(seg.Text)
 	if text != "" {
 		fmt.Fprintf(w, "%s --> %s\n", tsToVtt(time.Duration(seg.Start)+offset), tsToVtt(time.Duration(seg.End)+offset))
@@ -76,14 +85,31 @@ func (seg *Segment) WriteText(w io.Writer) {
 	} else if seg.SpeakerTurn {
 		fmt.Fprint(w, "\n\n[SPEAKER] ")
 	} else if seg.Id > 0 {
-		// Add space between segments when there's no speaker label
-		fmt.Fprint(w, " ")
+		// Add newline between segments when there's no speaker label
+		fmt.Fprint(w, "\n")
 	}
-	if seg.Id > 0 {
-		fmt.Fprint(w, seg.Text)
+	fmt.Fprint(w, strings.TrimSpace(seg.Text))
+}
+
+func (seg *Segment) WriteJSON(w io.Writer) {
+	// Write header if first segment, or connecting comma otherwise
+	if seg.Id == 0 {
+		fmt.Fprint(w, "[\n  ")
 	} else {
-		fmt.Fprint(w, strings.TrimSpace(seg.Text))
+		fmt.Fprint(w, ",")
 	}
+	if json, err := json.MarshalIndent(seg, "  ", "  "); err == nil {
+		json = bytes.TrimSpace(json)
+		fmt.Fprint(w, string(json))
+	}
+}
+
+func WriteJSONTrailer(w io.Writer) {
+	fmt.Fprintln(w, "\n]")
+}
+
+func WriteTextTrailer(w io.Writer) {
+	fmt.Fprintln(w, "\n")
 }
 
 //////////////////////////////////////////////////////////////////////////////

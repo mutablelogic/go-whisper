@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	// Packages
@@ -79,33 +78,9 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 		return fmt.Errorf("unsupported format: %s", cmd.Format)
 	}
 
-	// Print VTT header if needed
-	if format == httpclient.FormatVTT {
-		fmt.Print("WEBVTT\n\n")
-	}
-
 	// Add real-time segment printing callback
 	opts = append(opts, httpclient.WithSegmentCallback(func(seg *schema.Segment) error {
-		switch format {
-		case httpclient.FormatVTT:
-			seg.WriteVTT(os.Stdout, 0)
-		case httpclient.FormatSRT:
-			seg.WriteSRT(os.Stdout, 0)
-		case httpclient.FormatJSON:
-			if seg.Id > 0 {
-				fmt.Println(",")
-			}
-			json, err := json.MarshalIndent(seg, "", "  ")
-			if err != nil {
-				return err
-			} else {
-				json = bytes.TrimSpace(json)
-			}
-			fmt.Print(string(json))
-		default:
-			seg.WriteText(os.Stdout)
-			fmt.Println("")
-		}
+		writeSegment(os.Stdout, seg, format)
 		return nil
 	}))
 
@@ -117,35 +92,35 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 	}
 
 	// If segments were not printed via streaming, print from result
-	if len(result.Segments) > 0 {
-		switch format {
-		case httpclient.FormatVTT:
-			// If header wasn't printed yet, print it now
-			if len(result.Segments) > 0 {
-				for _, seg := range result.Segments {
-					if seg != nil {
-						seg.WriteVTT(os.Stdout, 0)
-					}
-				}
-			}
-		case httpclient.FormatSRT:
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteSRT(os.Stdout, 0)
-				}
-			}
-		case httpclient.FormatJSON:
-			fmt.Println(result)
-		default:
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteText(os.Stdout)
-				}
-			}
-		}
-	} else if result.Text != "" {
-		// Fallback to formatted text from server
-		fmt.Print(result.Text)
+	for _, seg := range result.Segments {
+		writeSegment(os.Stdout, seg, format)
 	}
+	writeTrailer(os.Stdout, format)
+
+	// Return success
 	return nil
+}
+
+// Method to write segment in specified format
+func writeSegment(w io.Writer, seg *schema.Segment, format httpclient.FormatType) {
+	switch format {
+	case httpclient.FormatVTT:
+		seg.WriteVTT(w, 0)
+	case httpclient.FormatSRT:
+		seg.WriteSRT(w, 0)
+	case httpclient.FormatJSON:
+		seg.WriteJSON(w)
+	default:
+		seg.WriteText(w)
+	}
+}
+
+// Method to write a trailer in specified format
+func writeTrailer(w io.Writer, format httpclient.FormatType) {
+	switch format {
+	case httpclient.FormatJSON:
+		schema.WriteJSONTrailer(w)
+	default:
+		schema.WriteTextTrailer(w)
+	}
 }

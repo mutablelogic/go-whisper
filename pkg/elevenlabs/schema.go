@@ -96,9 +96,11 @@ func (s TranscribeWord) String() string {
 // Return segments of a transcription response
 func (r *TranscribeResponse) Segments() *schema.Transcription {
 	t := &schema.Transcription{
-		Task:     "transcribe",
-		Language: r.Language,
-		Text:     r.Text,
+		TranscriptionSummary: schema.TranscriptionSummary{
+			Task:     "transcribe",
+			Language: r.Language,
+		},
+		Text: r.Text,
 	}
 
 	// Current segment

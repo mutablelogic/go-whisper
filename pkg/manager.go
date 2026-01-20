@@ -477,8 +477,10 @@ func transcriptionOpenAIToSchema(resp *openai.TranscriptionResponse) *schema.Tra
 	}
 
 	result := &schema.Transcription{
-		Text:     resp.Text,
-		Language: resp.Language,
+		TranscriptionSummary: schema.TranscriptionSummary{
+			Language: resp.Language,
+		},
+		Text: resp.Text,
 	}
 
 	// Convert segments if present
@@ -506,8 +508,10 @@ func transcriptionElevenLabsToSchema(resp *elevenlabs.TranscribeResponse) *schem
 	}
 
 	result := &schema.Transcription{
-		Text:     resp.Text,
-		Language: resp.Language,
+		TranscriptionSummary: schema.TranscriptionSummary{
+			Language: resp.Language,
+		},
+		Text: resp.Text,
 	}
 
 	// Merge word-level timestamps into phrase-based segments

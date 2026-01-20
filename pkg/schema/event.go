@@ -32,9 +32,5 @@ const (
 // STRINGIFY
 
 func (e Event) String() string {
-	data, err := json.MarshalIndent(e, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
+	return stringify(e)
 }

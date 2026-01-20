@@ -138,9 +138,11 @@ func (s *TranscriptionResponse) Unmarshal(header http.Header, r io.Reader) error
 
 func (s *TranscriptionResponse) Segments() *schema.Transcription {
 	resp := &schema.Transcription{
-		Task:     s.Task,
-		Language: s.Language,
-		Duration: s.Duration,
+		TranscriptionSummary: schema.TranscriptionSummary{
+			Task:     s.Task,
+			Language: s.Language,
+			Duration: s.Duration,
+		},
 		Text:     s.Text,
 		Segments: make([]*schema.Segment, 0, len(s.Segment)),
 	}

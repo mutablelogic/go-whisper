@@ -73,21 +73,27 @@ func transcribeCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manag
 
 	// Return response based on Accept header
 	if stream != nil {
-		stream.Write(schema.TranscribeStreamDoneType, result)
+		// Send summary without segments to avoid exceeding SSE buffer limits.
+		// Segments were already streamed via TranscribeStreamDeltaType.
+		stream.Write(schema.TranscribeStreamDoneType, result.Summary())
 		return nil
 	}
 
-	return writeTranscriptionResponse(w, r, result)
+	return writeTranscriptionResponse(w, r, mimetype, result)
 }
 
-// writeTranscriptionResponse writes transcription result in the requested format
-func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, result *schema.Transcription) error {
-	acceptHeader := r.Header.Get("Accept")
+const (
+	ContentTypeSRT  = "application/x-subrip"
+	ContentTypeSRT1 = "text/srt"
+	ContentTypeSRT2 = "text/subrip"
+	ContentTypeVTT  = "text/vtt"
+	ContentTypeVTT1 = "application/vtt"
+)
 
-	// Determine response format based on Accept header
-	switch {
-	case acceptHeader == "text/plain":
-		// Return plain text with segments (includes speaker labels if available)
+// writeTranscriptionResponse writes transcription result in the requested format
+func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, mimetype string, result *schema.Transcription) error {
+	switch mimetype {
+	case types.ContentTypeTextPlain:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		for _, seg := range result.Segments {
@@ -95,27 +101,20 @@ func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, result *
 				seg.WriteText(w)
 			}
 		}
-		w.Write([]byte("\n")) // Final newline
+		schema.WriteTextTrailer(w)
 		return nil
-	case acceptHeader == "application/x-subrip" || acceptHeader == "text/subrip" || acceptHeader == "text/srt":
-		// Return SRT format
-		w.Header().Set("Content-Type", "application/x-subrip")
+	case ContentTypeSRT1, ContentTypeSRT2, ContentTypeSRT:
+		w.Header().Set("Content-Type", ContentTypeSRT)
 		w.WriteHeader(http.StatusOK)
 		for _, seg := range result.Segments {
-			if seg != nil {
-				seg.WriteSRT(w, 0)
-			}
+			seg.WriteSRT(w, 0)
 		}
 		return nil
-	case acceptHeader == "text/vtt" || acceptHeader == "application/vtt":
-		// Return VTT format
-		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
+	case ContentTypeVTT, ContentTypeVTT1:
+		w.Header().Set("Content-Type", ContentTypeVTT)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("WEBVTT\n\n"))
 		for _, seg := range result.Segments {
-			if seg != nil {
-				seg.WriteVTT(w, 0)
-			}
+			seg.WriteVTT(w, 0)
 		}
 		return nil
 	default:
@@ -134,7 +133,5 @@ type streamSegmentWriter struct {
 
 // Write emits a segment event to the text stream
 func (w *streamSegmentWriter) Write(seg *schema.Segment) {
-	if w.stream != nil {
-		w.stream.Write(schema.TranscribeStreamDeltaType, seg)
-	}
+	w.stream.Write(schema.TranscribeStreamDeltaType, seg)
 }

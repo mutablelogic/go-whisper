@@ -237,14 +237,13 @@ func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentF
 	}
 	defer seg.Close()
 
-	// Process each audio segment
+	// Process each audio segment - and report in a span
 	err = seg.DecodeFloat32(ctx, func(start time.Duration, samples []float32) (result error) {
 		end := start + time.Duration(float64(len(samples))*float64(time.Second)/float64(whisper.SampleRate))
 		childctx, endfunc := otel.StartSpan(t.tracer, ctx, "whisper.TranscribeReader.Segment",
 			attribute.String("start", start.String()),
 			attribute.String("end", end.String()),
 		)
-		fmt.Println("Transcribing segment:", start, "to", end)
 		defer func() { endfunc(result) }()
 		return t.Transcribe(childctx, start, samples, fn)
 	})
