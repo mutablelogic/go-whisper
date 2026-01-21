@@ -10,6 +10,7 @@ import (
 	goclient "github.com/mutablelogic/go-client"
 	multipart "github.com/mutablelogic/go-client/pkg/multipart"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
+	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
 	openai "github.com/mutablelogic/go-whisper/pkg/openai"
@@ -29,6 +30,7 @@ type Manager struct {
 	whisper    *whisper.Manager
 	elevenlabs *elevenlabs.Client
 	openai     *openai.Client
+	segopts    []segmenter.Opt
 	tracer     trace.Tracer
 }
 
@@ -37,7 +39,7 @@ type Manager struct {
 
 // New creates a new manager with a whisper client and optionally
 // elevenlabs and openai clients if API keys are provided via Opts
-func New(modelsPath string, whisperOpts []whisper.Opt, opt ...Opt) (*Manager, error) {
+func New(modelsPath string, opt ...Opt) (*Manager, error) {
 	var o opts
 	self := new(Manager)
 
@@ -49,12 +51,15 @@ func New(modelsPath string, whisperOpts []whisper.Opt, opt ...Opt) (*Manager, er
 	}
 
 	// Create whisper client (required - never nil)
-	whisperManager, err := whisper.New(modelsPath, whisperOpts...)
+	whisperManager, err := whisper.New(modelsPath, o.whisperopts...)
 	if err != nil {
 		return nil, err
 	} else {
 		self.whisper = whisperManager
 	}
+
+	// Store segmenter options
+	self.segopts = o.segOpts
 
 	// Add tracer if provided
 	if o.tracer != nil {
@@ -190,7 +195,7 @@ func (m *Manager) DeleteModel(ctx context.Context, modelID string) error {
 }
 
 // Transcribe performs a transcription request in the language of the speech
-func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.TranscribeRequest) (*schema.Transcription, error) {
+func (m *Manager) Transcribe(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranscribeRequest) (*schema.Transcription, error) {
 	// OTEL request tracing
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.Transcribe",
 		attribute.String("request", req.String()),
@@ -207,7 +212,11 @@ func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.Trans
 	switch model.OwnedBy {
 	case "whisper":
 		var result *schema.Transcription
-		result, err = m.transcribeWhisper(ctx, r, req, model)
+		result, err = m.transcribeWhisper(ctx, r, req, model, func(seg *schema.Segment) {
+			if w != nil {
+				w.Write(seg)
+			}
+		})
 		return result, err
 	case "openai":
 		var result *schema.Transcription
@@ -224,7 +233,7 @@ func (m *Manager) Transcribe(ctx context.Context, r io.Reader, req *schema.Trans
 }
 
 // Translate performs a transcription request and returns the result in English
-func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.TranslateRequest) (*schema.Transcription, error) {
+func (m *Manager) Translate(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranslateRequest) (*schema.Transcription, error) {
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.Translate",
 		attribute.String("request", req.String()),
 	)
@@ -241,7 +250,11 @@ func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.Transl
 	switch model.OwnedBy {
 	case "whisper":
 		var result *schema.Transcription
-		result, err = m.translateWhisper(ctx, r, req, model)
+		result, err = m.translateWhisper(ctx, r, req, model, func(seg *schema.Segment) {
+			if w != nil {
+				w.Write(seg)
+			}
+		})
 		return result, err
 	case "openai":
 		var result *schema.Transcription
@@ -261,7 +274,7 @@ func (m *Manager) Translate(ctx context.Context, r io.Reader, req *schema.Transl
 // PRIVATE METHODS - WHISPER
 
 // transcribeWhisper transcribes using the local whisper model
-func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
+func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model, fn whisper.NewSegmentFunc) (*schema.Transcription, error) {
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Transcribe",
 		attribute.String("model.id", model.Id),
 	)
@@ -287,7 +300,7 @@ func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schem
 		}
 
 		// Transcribe from reader
-		if err := task.TranscribeReader(ctx, r, nil); err != nil {
+		if err := task.TranscribeReader(ctx, r, fn, m.segopts...); err != nil {
 			return err
 		}
 
@@ -299,7 +312,7 @@ func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schem
 }
 
 // translateWhisper translates using the local whisper model
-func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
+func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model, fn whisper.NewSegmentFunc) (*schema.Transcription, error) {
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Translate",
 		attribute.String("model.id", model.Id),
 	)
@@ -321,12 +334,12 @@ func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema
 		if req.Prompt != nil {
 			task.SetPrompt(types.PtrString(req.Prompt))
 		}
-		if req.Diarize != nil && types.PtrBool(req.Diarize) {
-			task.SetDiarize(true)
-		}
+		// if req.Diarize != nil && types.PtrBool(req.Diarize) {
+		// 	task.SetDiarize(true)
+		// }
 
 		// Transcribe from reader
-		if err := task.TranscribeReader(ctx, r, nil); err != nil {
+		if err := task.TranscribeReader(ctx, r, fn, m.segopts...); err != nil {
 			return err
 		}
 
@@ -344,9 +357,6 @@ func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema
 // transcribeOpenAI transcribes using the OpenAI API
 func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Validate unsupported features
-	if types.PtrBool(req.Stream) {
-		return nil, ErrBadParameter.With("stream is not supported by OpenAI")
-	}
 	if types.PtrBool(req.Diarize) {
 		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
 	}
@@ -385,11 +395,6 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema
 
 // translateOpenAI translates using the OpenAI API
 func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
-	// Validate unsupported features
-	if types.PtrBool(req.Diarize) {
-		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
-	}
-
 	// Determine filename with extension (default to .wav if not provided)
 	filename := "audio.wav"
 	if req.Filename != nil && *req.Filename != "" {
@@ -424,9 +429,6 @@ func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.
 // transcribeElevenLabs transcribes using the ElevenLabs API
 func (m *Manager) transcribeElevenLabs(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Validate unsupported features
-	if types.PtrBool(req.Stream) {
-		return nil, ErrBadParameter.With("stream is not supported by ElevenLabs")
-	}
 	if req.Prompt != nil && *req.Prompt != "" {
 		return nil, ErrBadParameter.With("prompt is not supported by ElevenLabs")
 	}
@@ -470,8 +472,10 @@ func transcriptionOpenAIToSchema(resp *openai.TranscriptionResponse) *schema.Tra
 	}
 
 	result := &schema.Transcription{
-		Text:     resp.Text,
-		Language: resp.Language,
+		TranscriptionSummary: schema.TranscriptionSummary{
+			Language: resp.Language,
+		},
+		Text: resp.Text,
 	}
 
 	// Convert segments if present
@@ -499,8 +503,10 @@ func transcriptionElevenLabsToSchema(resp *elevenlabs.TranscribeResponse) *schem
 	}
 
 	result := &schema.Transcription{
-		Text:     resp.Text,
-		Language: resp.Language,
+		TranscriptionSummary: schema.TranscriptionSummary{
+			Language: resp.Language,
+		},
+		Text: resp.Text,
 	}
 
 	// Merge word-level timestamps into phrase-based segments

@@ -172,8 +172,8 @@ func TestTranscribe_SRTResponse(t *testing.T) {
 	}
 
 	// Check content type
-	if rw.Header().Get("Content-Type") != "application/x-subrip" {
-		t.Errorf("expected Content-Type application/x-subrip, got %s", rw.Header().Get("Content-Type"))
+	if rw.Header().Get("Content-Type") != "text/subrip" {
+		t.Errorf("expected Content-Type text/subrip, got %s", rw.Header().Get("Content-Type"))
 	}
 
 	// Verify we got SRT format (should contain timecodes if segments exist)

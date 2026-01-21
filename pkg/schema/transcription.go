@@ -11,11 +11,18 @@ import (
 type Timestamp time.Duration
 
 type Transcription struct {
-	Task     string     `json:"task,omitempty"`
-	Language string     `json:"language,omitempty" writer:",width:8"`
-	Duration Timestamp  `json:"duration,omitempty" writer:",width:8,right"`
+	TranscriptionSummary
 	Text     string     `json:"text,omitempty" writer:",width:60,wrap"`
 	Segments []*Segment `json:"segments,omitempty" writer:",width:40,wrap"`
+}
+
+// TranscriptionSummary is a lightweight version of Transcription for streaming
+// done events. It excludes segments since they are sent individually during streaming.
+// This prevents the SSE event from exceeding bufio.Scanner's buffer limit.
+type TranscriptionSummary struct {
+	Task     string    `json:"task,omitempty"`
+	Language string    `json:"language,omitempty"`
+	Duration Timestamp `json:"duration,omitempty"`
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -23,6 +30,15 @@ type Transcription struct {
 
 func (t *Transcription) String() string {
 	return stringify(*t)
+}
+
+// Summary returns a TranscriptionSummary suitable for streaming done events
+func (t *Transcription) Summary() *TranscriptionSummary {
+	return &TranscriptionSummary{
+		Task:     t.Task,
+		Language: t.Language,
+		Duration: t.Duration,
+	}
 }
 
 func (t Timestamp) MarshalJSON() ([]byte, error) {

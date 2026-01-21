@@ -70,6 +70,7 @@ func TestTranscribe_MissingModel(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/transcribe", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
 	rw := httptest.NewRecorder()
 
 	router.ServeHTTP(rw, req)
@@ -138,6 +139,7 @@ func TestTranscribe_ActualTranscription(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest(http.MethodPost, "/api/transcribe", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
 	rw := httptest.NewRecorder()
 
 	// Execute transcription
@@ -221,6 +223,7 @@ func TestTranscribe_WithPrompt(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest(http.MethodPost, "/api/transcribe", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
 	rw := httptest.NewRecorder()
 
 	// Execute transcription

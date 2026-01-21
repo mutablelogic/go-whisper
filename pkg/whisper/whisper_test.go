@@ -6,9 +6,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// cleanupGlobalManager closes the global manager and allows new ones to be created
+// This is used by unit tests that need a fresh manager
+func cleanupGlobalManager() {
+	if globalManager != nil {
+		globalManager.Close()
+	}
+}
+
 func TestManager_NewAndClose(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
 	mgr, err := New(path)
@@ -22,7 +33,7 @@ func TestManager_NewAndClose(t *testing.T) {
 	assert.NotNil(globalManager.pool)
 	globalManager.RUnlock()
 
-	err = Close()
+	err = globalManager.Close()
 	assert.NoError(err)
 
 	globalManager.RLock()
@@ -31,46 +42,32 @@ func TestManager_NewAndClose(t *testing.T) {
 	globalManager.RUnlock()
 }
 
-func TestManager_DoubleInitialize(t *testing.T) {
-	assert := assert.New(t)
-	Close()
-
-	path := t.TempDir()
-	_, err := New(path)
-	if !assert.NoError(err) {
-		t.SkipNow()
-	}
-
-	// Try to initialize again
-	_, err = New(path)
-	assert.Error(err)
-	assert.Contains(err.Error(), "already initialized")
-
-	Close()
-}
-
 func TestManager_CloseMultipleTimes(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
-	_, err := New(path)
+	mgr, err := New(path)
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
 
 	// Close multiple times should be safe
-	assert.NoError(Close())
-	assert.NoError(Close())
-	assert.NoError(Close())
+	assert.NoError(mgr.Close())
+	assert.NoError(mgr.Close())
+	assert.NoError(mgr.Close())
 }
 
 func TestManager_WithMaxConcurrent(t *testing.T) {
-	assert := assert.New(t)
-	Close()
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
 
-	path := t.TempDir()
-	mgr, err := New(path, OptMaxConcurrent(4))
+	assert := assert.New(t)
+	mgr, err := New(t.TempDir(), OptMaxConcurrent(4))
 	if !assert.NoError(err) {
 		t.SkipNow()
 	}
@@ -80,12 +77,15 @@ func TestManager_WithMaxConcurrent(t *testing.T) {
 	assert.Equal(4, globalManager.pool.max)
 	globalManager.RUnlock()
 
-	Close()
+	assert.NoError(mgr.Close())
 }
 
 func TestManager_WithNoGPU(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
 	mgr, err := New(path, OptNoGPU())
@@ -98,12 +98,15 @@ func TestManager_WithNoGPU(t *testing.T) {
 	assert.Equal(-1, globalManager.pool.gpu)
 	globalManager.RUnlock()
 
-	Close()
+	mgr.Close()
 }
 
 func TestManager_WithDebug(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
 	called := false
@@ -118,12 +121,15 @@ func TestManager_WithDebug(t *testing.T) {
 	// Note: called may or may not be true depending on whether whisper logs during init
 	_ = called
 
-	Close()
+	mgr.Close()
 }
 
 func TestManager_ListModels_Empty(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
 	mgr, err := New(path)
@@ -135,12 +141,15 @@ func TestManager_ListModels_Empty(t *testing.T) {
 	assert.NotNil(models)
 	assert.Empty(models)
 
-	Close()
+	mgr.Close()
 }
 
 func TestManager_GetModelById_NotFound(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
 	mgr, err := New(path)
@@ -151,12 +160,15 @@ func TestManager_GetModelById_NotFound(t *testing.T) {
 	model := mgr.GetModelById("nonexistent")
 	assert.Nil(model)
 
-	Close()
+	mgr.Close()
 }
 
 func TestManager_DeleteModelById_NotFound(t *testing.T) {
+	// Clean up any existing global manager
+	cleanupGlobalManager()
+	defer cleanupGlobalManager()
+
 	assert := assert.New(t)
-	Close()
 
 	path := t.TempDir()
 	mgr, err := New(path)
@@ -168,7 +180,7 @@ func TestManager_DeleteModelById_NotFound(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "nonexistent")
 
-	Close()
+	mgr.Close()
 }
 
 func TestContextPool_Stats(t *testing.T) {

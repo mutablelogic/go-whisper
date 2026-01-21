@@ -224,7 +224,7 @@ func TestWriteSegmentFunctions(t *testing.T) {
 	// Test WriteSegmentText
 	buf.Reset()
 	WriteSegmentText(&buf, segment)
-	assert.Equal("Test segment", buf.String())
+	assert.Equal("\nTest segment", buf.String())
 }
 
 func TestNewSegmentFunc_Type(t *testing.T) {

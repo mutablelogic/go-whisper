@@ -112,7 +112,7 @@ func modelDownload(w http.ResponseWriter, r *http.Request, manager *pkg.Manager)
 			if total > 0 {
 				progress["percent"] = float64(cur) / float64(total) * 100
 			}
-			stream.Write("progress", progress)
+			stream.Write(schema.DownloadStreamProgressType, progress)
 		}
 	}
 
@@ -120,7 +120,7 @@ func modelDownload(w http.ResponseWriter, r *http.Request, manager *pkg.Manager)
 	model, err := manager.DownloadModel(r.Context(), req.Model, progressFn)
 	if err != nil {
 		if stream != nil {
-			stream.Write("error", err.Error())
+			stream.Write(schema.DownloadStreamErrorType, err.Error())
 			return nil
 		}
 		return httpresponse.Error(w, httperr(err))
@@ -128,7 +128,7 @@ func modelDownload(w http.ResponseWriter, r *http.Request, manager *pkg.Manager)
 
 	// Return done
 	if stream != nil {
-		stream.Write("done", model)
+		stream.Write(schema.DownloadStreamDoneType, model)
 		return nil
 	}
 

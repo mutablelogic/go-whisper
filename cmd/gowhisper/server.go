@@ -12,10 +12,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	// Packages
 	client "github.com/mutablelogic/go-client"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
+	"github.com/mutablelogic/go-media/pkg/segmenter"
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
 	pkg "github.com/mutablelogic/go-whisper/pkg"
 	httphandler "github.com/mutablelogic/go-whisper/pkg/httphandler"
@@ -49,6 +51,12 @@ type RunServer struct {
 		MaxContexts uint `name:"max-contexts" help:"Maximum number of concurrent contexts" default:"0"`
 		GPU         bool `name:"gpu" help:"Use GPU if available" default:"true"`
 	} `embed:"" prefix:"whisper."`
+
+	// Segmenter options
+	Segmenter struct {
+		MinSilenceSize time.Duration `name:"min-silence-size" help:"Minimum silence segment size"`
+		MaxSegmentSize time.Duration `name:"max-segment-size" help:"Maximum segment size"`
+	} `embed:"" prefix:"segmenter."`
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -74,34 +82,32 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	// Report models path
 	ctx.logger.With("models", modelsPath).Print(ctx.ctx, "using models directory")
 
-	// Build whisper options
-	whisperOpts := []whisper.Opt{}
+	// Build options
+	managerOpts := []pkg.Opt{}
 	if cmd.Whisper.MaxContexts > 0 {
-		whisperOpts = append(whisperOpts, whisper.OptMaxConcurrent(int(cmd.Whisper.MaxContexts)))
+		managerOpts = append(managerOpts, pkg.WithWhisperOpt(whisper.OptMaxConcurrent(int(cmd.Whisper.MaxContexts))))
 	}
 	if !cmd.Whisper.GPU {
-		whisperOpts = append(whisperOpts, whisper.OptNoGPU())
+		managerOpts = append(managerOpts, pkg.WithWhisperOpt(whisper.OptNoGPU()))
 	}
 	if ctx.Debug {
-		whisperOpts = append(whisperOpts, whisper.OptDebug())
-		// Provide a log function so debug output is actually shown
-		whisperOpts = append(whisperOpts, whisper.OptLog(func(s string) {
-			ctx.logger.Print(ctx.ctx, s)
-		}))
-	}
+		managerOpts = append(managerOpts, pkg.WithWhisperOpt(whisper.OptDebug()))
 
-	// Build manager options
-	managerOpts := []pkg.Opt{}
+		// Provide a log function so debug output is actually shown
+		managerOpts = append(managerOpts, pkg.WithWhisperOpt(whisper.OptLog(func(s string) {
+			ctx.logger.Print(ctx.ctx, s)
+		})))
+	}
 	if ctx.tracer != nil {
-		managerOpts = append(managerOpts, pkg.OptTracer(ctx.tracer))
+		managerOpts = append(managerOpts, pkg.WithTracer(ctx.tracer))
 	}
 	if ctx.Debug {
 		// Enable HTTP tracing for OpenAI and ElevenLabs clients
-		managerOpts = append(managerOpts, pkg.OptClientOpts(client.OptTrace(os.Stderr, false)))
+		managerOpts = append(managerOpts, pkg.WithClientOpts(client.OptTrace(os.Stderr, false)))
 	}
 	if ctx.HTTP.Timeout > 0 {
 		// Set HTTP client timeout for OpenAI and ElevenLabs clients
-		managerOpts = append(managerOpts, pkg.OptClientOpts(client.OptTimeout(ctx.HTTP.Timeout)))
+		managerOpts = append(managerOpts, pkg.WithClientOpts(client.OptTimeout(ctx.HTTP.Timeout)))
 	}
 	if cmd.OpenAIKey != "" {
 		managerOpts = append(managerOpts, pkg.OptOpenAIKey(cmd.OpenAIKey))
@@ -109,9 +115,15 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	if cmd.ElevenLabsKey != "" {
 		managerOpts = append(managerOpts, pkg.OptElevenLabsKey(cmd.ElevenLabsKey))
 	}
+	if cmd.Segmenter.MinSilenceSize > 0 {
+		managerOpts = append(managerOpts, pkg.WithSegmenterOpt(segmenter.WithSilenceSize(cmd.Segmenter.MinSilenceSize)))
+	}
+	if cmd.Segmenter.MaxSegmentSize > 0 {
+		managerOpts = append(managerOpts, pkg.WithSegmenterOpt(segmenter.WithSegmentSize(cmd.Segmenter.MaxSegmentSize)))
+	}
 
 	// Create the whisper manager
-	manager, err := pkg.New(modelsPath, whisperOpts, managerOpts...)
+	manager, err := pkg.New(modelsPath, managerOpts...)
 	if err != nil {
 		return err
 	}

@@ -147,12 +147,6 @@ func (m *Manager) Close() error {
 	return result
 }
 
-// Close closes the global whisper manager. This is a convenience function
-// that calls Close() on the global manager instance.
-func Close() error {
-	return globalManager.Close()
-}
-
 // newContextPool creates a simple context pool
 func newContextPool(path string, max int, gpu int) *contextPool {
 	if max <= 0 {

@@ -22,7 +22,6 @@ type TranslateCommand struct {
 	File        string   `arg:"" name:"file" help:"Audio file to translate"`
 	Prompt      *string  `name:"prompt" help:"Initial prompt to guide translation"`
 	Temperature *float64 `name:"temperature" help:"Temperature (0.0-1.0)"`
-	Diarize     *bool    `name:"diarize" help:"Enable speaker diarization"`
 	Format      string   `name:"format" help:"Output format: json, text, vtt, srt" default:"json"`
 }
 
@@ -54,25 +53,18 @@ func (cmd *TranslateCommand) Run(ctx *Globals) (err error) {
 	if cmd.Temperature != nil {
 		opts = append(opts, httpclient.WithTemperature(*cmd.Temperature))
 	}
-	if cmd.Diarize != nil {
-		opts = append(opts, httpclient.WithDiarize(*cmd.Diarize))
-	}
 
 	// Set format
-	var format httpclient.FormatType
-	switch cmd.Format {
-	case "text", string(httpclient.FormatText):
-		format = httpclient.FormatText
-	case "vtt", string(httpclient.FormatVTT):
-		format = httpclient.FormatVTT
-	case "srt", string(httpclient.FormatSRT):
-		format = httpclient.FormatSRT
-	case "json", string(httpclient.FormatJSON):
-		format = httpclient.FormatJSON
-	default:
-		return fmt.Errorf("unsupported format: %s", cmd.Format)
+	format, err := formatFromString(cmd.Format)
+	if err != nil {
+		return err
 	}
-	opts = append(opts, httpclient.WithFormat(format))
+
+	// Add real-time segment printing callback
+	opts = append(opts, httpclient.WithSegmentCallback(func(seg *schema.Segment) error {
+		writeSegment(os.Stdout, seg, format)
+		return nil
+	}))
 
 	// Translate
 	var result *schema.Transcription
@@ -81,38 +73,12 @@ func (cmd *TranslateCommand) Run(ctx *Globals) (err error) {
 		return err
 	}
 
-	// Print result based on format
-	switch format {
-	case httpclient.FormatJSON:
-		fmt.Println(result)
-	case httpclient.FormatVTT:
-		if len(result.Segments) > 0 {
-			// Client-side formatting from segments
-			fmt.Print("WEBVTT\n\n")
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteVTT(os.Stdout, 0)
-				}
-			}
-		} else {
-			// Server already formatted it
-			fmt.Print(result.Text)
-		}
-	case httpclient.FormatSRT:
-		if len(result.Segments) > 0 {
-			// Client-side formatting from segments
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteSRT(os.Stdout, 0)
-				}
-			}
-		} else {
-			// Server already formatted it
-			fmt.Print(result.Text)
-		}
-	default:
-		// For text and other formats, print the formatted text from server
-		fmt.Print(result.Text)
+	// If segments were not printed via streaming, print from result
+	for _, seg := range result.Segments {
+		writeSegment(os.Stdout, seg, format)
 	}
+	writeTrailer(os.Stdout, format)
+
+	// Return success
 	return nil
 }

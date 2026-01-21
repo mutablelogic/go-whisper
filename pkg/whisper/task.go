@@ -11,9 +11,12 @@ import (
 	"time"
 
 	// Packages
+	otel "github.com/mutablelogic/go-client/pkg/otel"
 	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
+	attribute "go.opentelemetry.io/otel/attribute"
+	trace "go.opentelemetry.io/otel/trace"
 
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
@@ -35,6 +38,9 @@ type Task struct {
 
 	// Collect the transcription
 	result *schema.Transcription
+
+	// OTEL tracer
+	tracer trace.Tracer
 }
 
 // Callback for new segments during the transcription process
@@ -231,16 +237,24 @@ func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentF
 	}
 	defer seg.Close()
 
-	// Process each audio segment
-	err = seg.DecodeFloat32(ctx, func(ts time.Duration, samples []float32) error {
-		return t.Transcribe(ctx, ts, samples, fn)
+	// Process each audio segment - and report in a span
+	err = seg.DecodeFloat32(ctx, func(start time.Duration, samples []float32) (result error) {
+		end := start + time.Duration(float64(len(samples))*float64(time.Second)/float64(whisper.SampleRate))
+		childctx, endfunc := otel.StartSpan(t.tracer, ctx, "whisper.TranscribeReader.Segment",
+			attribute.String("start", start.String()),
+			attribute.String("end", end.String()),
+		)
+		defer func() { endfunc(result) }()
+		return t.Transcribe(childctx, start, samples, fn)
 	})
 
-	if err != nil && err != io.EOF {
-		return err
+	// Return success if io.EOF
+	if err == io.EOF {
+		return nil
 	}
 
-	return nil
+	// Return any errors
+	return err
 }
 
 // Set temperature for sampling

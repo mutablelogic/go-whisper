@@ -92,7 +92,7 @@ func setupTestEnvironment() error {
 func cleanupTestEnvironment() {
 	// Close whisper manager
 	if testManager != nil {
-		Close()
+		testManager.Close()
 		fmt.Println("Closed whisper manager")
 	}
 
@@ -467,19 +467,26 @@ func TestIntegration_LowConcurrencyLimit(t *testing.T) {
 	const maxConcurrent = 2
 	const numTasks = 5
 
-	// We need to create a temporary manager since we can't modify the global one
-	// First close the global manager temporarily
-	Close()
+	// First, close the global test manager to free up resources
+	if testManager != nil {
+		testManager.Close()
+		testManager = nil
+	}
 
 	mgr, err := New(testModelsPath, OptMaxConcurrent(maxConcurrent))
 	assert.NoError(err)
 	assert.NotNil(mgr)
 
-	// Ensure we clean up properly
+	// Ensure we clean up properly and reinitialize global manager
 	defer func() {
-		Close()
+		if mgr != nil {
+			mgr.Close()
+			mgr = nil
+		}
 		// Reinitialize the global manager for other tests
-		setupTestEnvironment()
+		if err := setupTestEnvironment(); err != nil {
+			t.Logf("Warning: could not reinitialize test environment: %v", err)
+		}
 	}()
 
 	models := mgr.ListModels()

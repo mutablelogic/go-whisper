@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	// Packages
 	otel "github.com/mutablelogic/go-client/pkg/otel"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	httpclient "github.com/mutablelogic/go-whisper/pkg/httpclient"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
@@ -18,13 +20,9 @@ type TranscribeCommands struct {
 }
 
 type TranscribeCommand struct {
-	Model       string   `arg:"" name:"model" help:"Model ID to use for transcription"`
-	File        string   `arg:"" name:"file" help:"Audio file to transcribe"`
-	Language    *string  `name:"language" help:"Language code (e.g., 'en', 'es', 'fr')"`
-	Prompt      *string  `name:"prompt" help:"Initial prompt to guide transcription"`
-	Temperature *float64 `name:"temperature" help:"Temperature (0.0-1.0)"`
-	Diarize     *bool    `name:"diarize" help:"Enable speaker diarization"`
-	Format      string   `name:"format" help:"Output format: json, text, vtt, srt" default:"json"`
+	TranslateCommand
+	Diarize  *bool   `name:"diarize" help:"Enable speaker diarization"`
+	Language *string `name:"language" help:"Language code (e.g., 'en', 'es', 'fr')"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -63,20 +61,16 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 	}
 
 	// Set format
-	var format httpclient.FormatType
-	switch cmd.Format {
-	case "text", string(httpclient.FormatText):
-		format = httpclient.FormatText
-	case "vtt", string(httpclient.FormatVTT):
-		format = httpclient.FormatVTT
-	case "srt", string(httpclient.FormatSRT):
-		format = httpclient.FormatSRT
-	case "json", string(httpclient.FormatJSON):
-		format = httpclient.FormatJSON
-	default:
-		return fmt.Errorf("unsupported format: %s", cmd.Format)
+	format, err := formatFromString(cmd.Format)
+	if err != nil {
+		return err
 	}
-	opts = append(opts, httpclient.WithFormat(format))
+
+	// Add real-time segment printing callback
+	opts = append(opts, httpclient.WithSegmentCallback(func(seg *schema.Segment) error {
+		writeSegment(os.Stdout, seg, format)
+		return nil
+	}))
 
 	// Transcribe
 	var result *schema.Transcription
@@ -85,38 +79,51 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 		return err
 	}
 
-	// Print result based on format
+	// If segments were not printed via streaming, print from result
+	for _, seg := range result.Segments {
+		writeSegment(os.Stdout, seg, format)
+	}
+	writeTrailer(os.Stdout, format)
+
+	// Return success
+	return nil
+}
+
+// Method to write segment in specified format
+func writeSegment(w io.Writer, seg *schema.Segment, format httpclient.FormatType) {
+	switch format {
+	case httpclient.FormatVTT:
+		seg.WriteVTT(w, 0)
+	case httpclient.FormatSRT:
+		seg.WriteSRT(w, 0)
+	case httpclient.FormatJSON:
+		seg.WriteJSON(w)
+	default:
+		seg.WriteText(w)
+	}
+}
+
+// Method to write a trailer in specified format
+func writeTrailer(w io.Writer, format httpclient.FormatType) {
 	switch format {
 	case httpclient.FormatJSON:
-		fmt.Println(result)
-	case httpclient.FormatVTT:
-		if len(result.Segments) > 0 {
-			// Client-side formatting from segments
-			fmt.Print("WEBVTT\n\n")
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteVTT(os.Stdout, 0)
-				}
-			}
-		} else {
-			// Server already formatted it
-			fmt.Print(result.Text)
-		}
-	case httpclient.FormatSRT:
-		if len(result.Segments) > 0 {
-			// Client-side formatting from segments
-			for _, seg := range result.Segments {
-				if seg != nil {
-					seg.WriteSRT(os.Stdout, 0)
-				}
-			}
-		} else {
-			// Server already formatted it
-			fmt.Print(result.Text)
-		}
+		schema.WriteJSONTrailer(w)
 	default:
-		// For text and other formats, print the formatted text from server
-		fmt.Print(result.Text)
+		schema.WriteTextTrailer(w)
 	}
-	return nil
+}
+
+func formatFromString(format string) (httpclient.FormatType, error) {
+	switch format {
+	case "text", string(httpclient.FormatText):
+		return httpclient.FormatText, nil
+	case "vtt", string(httpclient.FormatVTT):
+		return httpclient.FormatVTT, nil
+	case "srt", string(httpclient.FormatSRT):
+		return httpclient.FormatSRT, nil
+	case "json", string(httpclient.FormatJSON):
+		return httpclient.FormatJSON, nil
+	default:
+		return "", httpresponse.ErrBadRequest.Withf("unsupported format: %q", format)
+	}
 }
