@@ -9,7 +9,7 @@ import (
 
 	// Packages
 	client "github.com/mutablelogic/go-client"
-	"github.com/mutablelogic/go-server/pkg/types"
+	types "github.com/mutablelogic/go-server/pkg/types"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
@@ -43,7 +43,7 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opts
 	}
 
 	// Create multipart payload
-	payload, err := client.NewMultipartRequest(&opt.TranscribeMultipartRequest, types.ContentTypeAny)
+	payload, err := client.NewMultipartRequest(&opt.TranscribeMultipartRequest, types.ContentTypeJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
 	}

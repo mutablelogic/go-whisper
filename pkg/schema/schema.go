@@ -5,6 +5,23 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
+// GLOBALS
+
+const (
+	ContentTypeSRT = "text/subrip"
+	ContentTypeVTT = "text/vtt"
+)
+
+var (
+	ContentTypeSRTVariants = []string{
+		ContentTypeSRT, "application/x-subrip", "text/srt",
+	}
+	ContentTypeVTTVariants = []string{
+		ContentTypeVTT, "application/vtt",
+	}
+)
+
+////////////////////////////////////////////////////////////////////////////////
 // STRINGIFY
 
 func stringify[T any](v T) string {

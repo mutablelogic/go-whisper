@@ -73,8 +73,6 @@ func translateCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manage
 
 	// Return response based on Accept header
 	if stream != nil {
-		// Send summary without segments to avoid exceeding SSE buffer limits.
-		// Segments were already streamed via TranscribeStreamDeltaType.
 		stream.Write(schema.TranscribeStreamDoneType, result.Summary())
 		return nil
 	}

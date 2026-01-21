@@ -7,6 +7,7 @@ import (
 
 	// Packages
 	otel "github.com/mutablelogic/go-client/pkg/otel"
+	"github.com/mutablelogic/go-llm"
 	httpclient "github.com/mutablelogic/go-whisper/pkg/httpclient"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
@@ -19,13 +20,9 @@ type TranscribeCommands struct {
 }
 
 type TranscribeCommand struct {
-	Model       string   `arg:"" name:"model" help:"Model ID to use for transcription"`
-	File        string   `arg:"" name:"file" help:"Audio file to transcribe"`
-	Language    *string  `name:"language" help:"Language code (e.g., 'en', 'es', 'fr')"`
-	Prompt      *string  `name:"prompt" help:"Initial prompt to guide transcription"`
-	Temperature *float64 `name:"temperature" help:"Temperature (0.0-1.0)"`
-	Diarize     *bool    `name:"diarize" help:"Enable speaker diarization"`
-	Format      string   `name:"format" help:"Output format: json, text, vtt, srt" default:"json"`
+	TranslateCommand
+	Diarize  *bool   `name:"diarize" help:"Enable speaker diarization"`
+	Language *string `name:"language" help:"Language code (e.g., 'en', 'es', 'fr')"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -64,18 +61,9 @@ func (cmd *TranscribeCommand) Run(ctx *Globals) (err error) {
 	}
 
 	// Set format
-	var format httpclient.FormatType
-	switch cmd.Format {
-	case "text", string(httpclient.FormatText):
-		format = httpclient.FormatText
-	case "vtt", string(httpclient.FormatVTT):
-		format = httpclient.FormatVTT
-	case "srt", string(httpclient.FormatSRT):
-		format = httpclient.FormatSRT
-	case "json", string(httpclient.FormatJSON):
-		format = httpclient.FormatJSON
-	default:
-		return fmt.Errorf("unsupported format: %s", cmd.Format)
+	format, err := formatFromString(cmd.Format)
+	if err != nil {
+		return err
 	}
 
 	// Add real-time segment printing callback
@@ -122,5 +110,20 @@ func writeTrailer(w io.Writer, format httpclient.FormatType) {
 		schema.WriteJSONTrailer(w)
 	default:
 		schema.WriteTextTrailer(w)
+	}
+}
+
+func formatFromString(format string) (httpclient.FormatType, error) {
+	switch format {
+	case "text", string(httpclient.FormatText):
+		return httpclient.FormatText, nil
+	case "vtt", string(httpclient.FormatVTT):
+		return httpclient.FormatVTT, nil
+	case "srt", string(httpclient.FormatSRT):
+		return httpclient.FormatSRT, nil
+	case "json", string(httpclient.FormatJSON):
+		return httpclient.FormatJSON, nil
+	default:
+		return "", llm.ErrBadParameter.Withf("unsupported format: %q", format)
 	}
 }

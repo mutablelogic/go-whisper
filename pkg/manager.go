@@ -334,9 +334,9 @@ func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema
 		if req.Prompt != nil {
 			task.SetPrompt(types.PtrString(req.Prompt))
 		}
-		if req.Diarize != nil && types.PtrBool(req.Diarize) {
-			task.SetDiarize(true)
-		}
+		// if req.Diarize != nil && types.PtrBool(req.Diarize) {
+		// 	task.SetDiarize(true)
+		// }
 
 		// Transcribe from reader
 		if err := task.TranscribeReader(ctx, r, fn, m.segopts...); err != nil {
@@ -395,11 +395,6 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema
 
 // translateOpenAI translates using the OpenAI API
 func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
-	// Validate unsupported features
-	if types.PtrBool(req.Diarize) {
-		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
-	}
-
 	// Determine filename with extension (default to .wav if not provided)
 	filename := "audio.wav"
 	if req.Filename != nil && *req.Filename != "" {

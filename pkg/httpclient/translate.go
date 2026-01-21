@@ -12,7 +12,7 @@ import (
 
 	// Packages
 	client "github.com/mutablelogic/go-client"
-	gomultipart "github.com/mutablelogic/go-client/pkg/multipart"
+	"github.com/mutablelogic/go-server/pkg/types"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
@@ -55,89 +55,60 @@ func (r *translationResponse) Unmarshal(header http.Header, reader io.Reader) er
 //	file, _ := os.Open("audio.mp3")
 //	result, err := client.Translate(ctx, "tiny", file,
 //	    httpclient.WithPrompt("technical content"))
-func (c *Client) Translate(ctx context.Context, model string, audio io.Reader, opts ...Opt) (*schema.Transcription, error) {
-	if model == "" {
-		return nil, fmt.Errorf("model cannot be empty")
-	}
-	if audio == nil {
-		return nil, fmt.Errorf("audio reader cannot be nil")
-	}
-
+func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opts ...Opt) (*schema.Transcription, error) {
 	// Apply options to build the request
 	opt, err := applyOpts(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Determine filename
-	filename := opt.Audio.Path
-	if filename == "" {
-		if f, ok := audio.(*os.File); ok && f != nil {
-			filename = filepath.Base(f.Name())
+	// Set model and audio
+	opt.Model = model
+	opt.Audio.Body = r
+	if opt.Audio.Path == "" {
+		// Infer filename from *os.File if not already set
+		if f, ok := r.(*os.File); ok && f != nil {
+			opt.Audio.Path = filepath.Base(f.Name())
 		}
-	}
-	if filename == "" {
-		filename = "audio.mp3"
 	}
 
 	// Build TranslateMultipartRequest from the TranscribeMultipartRequest
-	req := &schema.TranslateMultipartRequest{
+	req := schema.TranslateMultipartRequest{
 		TranslateRequest: opt.TranslateRequest,
-		Audio: gomultipart.File{
-			Path: filename,
-			Body: audio,
-		},
+		Audio:            opt.Audio,
 	}
 	req.Model = model
 
-	// Determine accept format
-	accept := client.ContentTypeJson
-	if opt.format != "" {
-		accept = string(opt.format)
-	}
-
-	// If streaming callback provided, request text/event-stream
-	if opt.segmentCallback != nil {
-		accept = "text/event-stream"
-	}
-
 	// Create multipart payload
-	payload, err := client.NewMultipartRequest(req, accept)
+	payload, err := client.NewMultipartRequest(&req, types.ContentTypeJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
 	}
 
 	// If streaming callback provided, handle streaming
+	var reqOpts []client.RequestOpt = []client.RequestOpt{
+		client.OptPath("translate"),
+	}
+	var response schema.Transcription
 	if opt.segmentCallback != nil {
-		var opts []client.RequestOpt
-		opts = append(opts, client.OptPath("translate"))
-		opts = append(opts, client.OptReqHeader("Accept", "text/event-stream"))
-		opts = append(opts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
-			// Parse segment if it's a delta event
+		reqOpts = append(reqOpts, client.OptReqHeader("Accept", "text/event-stream"))
+		reqOpts = append(reqOpts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
+			var segment schema.Segment
 			if evt.Event == schema.TranscribeStreamDeltaType {
-				var segment schema.Segment
-				if err := evt.Json(&segment); err == nil {
-					if err := opt.segmentCallback(&segment); err != nil {
-						return err
-					}
+				if err := evt.Json(&segment); err != nil {
+					return err
 				}
+				return opt.segmentCallback(&segment)
 			}
 			return nil
 		}))
-		var response translationResponse
-		if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
-			return nil, err
-		}
-		// For streaming, return the transcription (segments sent via callback)
-		return &response.Transcription, nil
 	}
 
-	// Perform request using custom unmarshaler
-	var response translationResponse
-	if err := c.DoWithContext(ctx, payload, &response, client.OptPath("translate")); err != nil {
+	// Perform the request
+	if err := c.DoWithContext(ctx, payload, &response, reqOpts...); err != nil {
 		return nil, err
 	}
 
-	// Return the response
-	return &response.Transcription, nil
+	// Return the accumulated result
+	return &response, nil
 }

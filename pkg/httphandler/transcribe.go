@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"net/http"
+	"slices"
 
 	// Packages
 	httprequest "github.com/mutablelogic/go-server/pkg/httprequest"
@@ -73,8 +74,6 @@ func transcribeCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manag
 
 	// Return response based on Accept header
 	if stream != nil {
-		// Send summary without segments to avoid exceeding SSE buffer limits.
-		// Segments were already streamed via TranscribeStreamDeltaType.
 		stream.Write(schema.TranscribeStreamDoneType, result.Summary())
 		return nil
 	}
@@ -82,18 +81,13 @@ func transcribeCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manag
 	return writeTranscriptionResponse(w, r, mimetype, result)
 }
 
-const (
-	ContentTypeSRT  = "application/x-subrip"
-	ContentTypeSRT1 = "text/srt"
-	ContentTypeSRT2 = "text/subrip"
-	ContentTypeVTT  = "text/vtt"
-	ContentTypeVTT1 = "application/vtt"
-)
+///////////////////////////////////////////////////////////////////////////////
+// PRIVATE TYPES
 
 // writeTranscriptionResponse writes transcription result in the requested format
 func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, mimetype string, result *schema.Transcription) error {
-	switch mimetype {
-	case types.ContentTypeTextPlain:
+	switch {
+	case mimetype == types.ContentTypeTextPlain:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		for _, seg := range result.Segments {
@@ -103,15 +97,15 @@ func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, mimetype
 		}
 		schema.WriteTextTrailer(w)
 		return nil
-	case ContentTypeSRT1, ContentTypeSRT2, ContentTypeSRT:
-		w.Header().Set("Content-Type", ContentTypeSRT)
+	case slices.Contains(schema.ContentTypeSRTVariants, mimetype):
+		w.Header().Set("Content-Type", schema.ContentTypeSRT)
 		w.WriteHeader(http.StatusOK)
 		for _, seg := range result.Segments {
 			seg.WriteSRT(w, 0)
 		}
 		return nil
-	case ContentTypeVTT, ContentTypeVTT1:
-		w.Header().Set("Content-Type", ContentTypeVTT)
+	case slices.Contains(schema.ContentTypeVTTVariants, mimetype):
+		w.Header().Set("Content-Type", schema.ContentTypeVTT)
 		w.WriteHeader(http.StatusOK)
 		for _, seg := range result.Segments {
 			seg.WriteVTT(w, 0)
@@ -122,9 +116,6 @@ func writeTranscriptionResponse(w http.ResponseWriter, r *http.Request, mimetype
 		return httpresponse.JSON(w, http.StatusOK, httprequest.Indent(r), result)
 	}
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// PRIVATE TYPES
 
 // streamSegmentWriter implements schema.SegmentWriter by emitting SSE events
 type streamSegmentWriter struct {

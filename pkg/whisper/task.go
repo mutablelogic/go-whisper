@@ -248,9 +248,12 @@ func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentF
 		return t.Transcribe(childctx, start, samples, fn)
 	})
 
+	// Return success if io.EOF
 	if err == io.EOF {
-		err = nil
+		return nil
 	}
+
+	// Return any errors
 	return err
 }
 

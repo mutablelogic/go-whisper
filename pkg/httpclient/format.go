@@ -1,5 +1,10 @@
 package httpclient
 
+import (
+	"github.com/mutablelogic/go-server/pkg/types"
+	"github.com/mutablelogic/go-whisper/pkg/schema"
+)
+
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
@@ -10,15 +15,8 @@ type FormatType string
 // GLOBALS
 
 const (
-	// FormatJSON requests JSON response (default)
-	FormatJSON FormatType = "application/json"
-
-	// FormatText requests plain text response
-	FormatText FormatType = "text/plain"
-
-	// FormatVTT requests WebVTT subtitle format
-	FormatVTT FormatType = "text/vtt"
-
-	// FormatSRT requests SubRip subtitle format
-	FormatSRT FormatType = "application/x-subrip"
+	FormatJSON FormatType = types.ContentTypeJSON
+	FormatText FormatType = types.ContentTypeTextPlain
+	FormatVTT  FormatType = schema.ContentTypeVTT
+	FormatSRT  FormatType = schema.ContentTypeSRT
 )
