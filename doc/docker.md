@@ -1,73 +1,114 @@
-# Docker GPU Acceleration with Vulkan
+# Running gowhisper with Docker
 
-The go-whisper Docker image includes Vulkan support for hardware-accelerated video encoding/decoding. To use GPU acceleration from within the container, you must pass through GPU devices from the host.
+This guide covers running gowhisper in Docker with different GPU acceleration options.
 
-## Prerequisites
+## Docker Images
 
-Install GPU drivers and Vulkan tools on your host system:
+| Image | Description |
+|-------|-------------|
+| `ghcr.io/mutablelogic/go-whisper` | Vulkan support (multi-arch: amd64, arm64) |
+| `ghcr.io/mutablelogic/go-whisper-cuda` | CUDA support for NVIDIA GPUs (multi-arch: amd64, arm64) |
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOWHISPER_DIR` | Directory for storing models | `/data` |
+| `GOWHISPER_ADDR` | HTTP listen address | `0.0.0.0:8081` |
+| `OPENAI_API_KEY` | OpenAI API key (optional) | |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key (optional) | |
+
+## Running on CPU Only
+
+For CPU-only operation, no special device flags are needed:
 
 ```bash
-# NVIDIA
-apt install nvidia-container-toolkit vulkan-tools
-systemctl restart docker
-
-# AMD/Intel/Raspberry Pi
-apt install mesa-vulkan-drivers vulkan-tools
-
-# Verify - you should see a GPU other than "deviceName = llvmpipe"
-vulkaninfo --summary
-
-# Pull Vulkan-enabled Docker image
-docker pull ghcr.io/mutablelogic/go-whisper
+docker run --rm -p 8081:8081 \
+  -v /path/to/models:/data \
+  ghcr.io/mutablelogic/go-whisper run
 ```
 
 ## Running with Vulkan GPU Acceleration
 
+### Prerequisites (Host)
+
 ```bash
-# NVIDIA
-docker run --rm --name gowhisper -p 8081:8081 --gpus all ghcr.io/mutablelogic/go-whisper run --debug
+# Install Vulkan tools
+sudo apt install vulkan-tools
 
-# NVIDIA Jetson/Tegra
-docker run --rm --name gowhisper -p 8081:8081 --runtime nvidia \
-  --device=/dev/nvhost-ctrl-gpu --device=/dev/nvhost-prof-gpu --device=/dev/nvmap --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
-  -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
-  -v /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro \
-  -v /etc/vulkan/icd.d:/etc/vulkan/icd.d:ro \
-  -e LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/tegra \
-  -e VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json \  
-  ghcr.io/mutablelogic/go-whisper run --debug
+# Verify GPU is detected (should show something other than "llvmpipe")
+vulkaninfo --summary
+```
 
-# AMD/Intel/Raspberry Pi
-docker run --rm --name gowhisper -p 8081:8081 \
+### AMD / Intel
+
+```bash
+docker run --rm -p 8081:8081 \
   --device=/dev/dri:/dev/dri \
   -v /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d:ro \
+  -v /path/to/models:/data \
   ghcr.io/mutablelogic/go-whisper run --debug
+```
+
+> **Note:** Raspberry Pi does not support Vulkan GPU acceleration for whisper due to hardware limitations. Use CPU-only mode instead.
+
+## Running with CUDA GPU Acceleration
+
+### NVIDIA (Desktop, Server, and Jetson)
+
+```bash
+# Install NVIDIA container toolkit
+sudo apt install nvidia-container-toolkit
+sudo systemctl restart docker
+
+docker run --rm -p 8081:8081 --runtime nvidia --gpus all \
+  -v /path/to/models:/data \
+  ghcr.io/mutablelogic/go-whisper-cuda run --debug
 ```
 
 ## Troubleshooting
 
-If you encounter issues with Vulkan device access, ensure that the necessary device files are correctly passed into the container and that your user has appropriate permissions. You can check Vulkan installation and device availability using `vulkaninfo` in the container. You should see a GPU other than "deviceName = llvmpipe" listed.
+### Verify Vulkan GPU Access
+
+Run `vulkaninfo` inside the container to check if the GPU is accessible:
 
 ```bash
-# NVIDIA
-docker run --rm -it --gpus all \
-  --entrypoint vulkaninfo \
-  ghcr.io/mutablelogic/go-whisper --summary
-
-# NVIDIA Jetson/Tegra
-docker run --rm -it --runtime nvidia \
-  --device=/dev/nvhost-ctrl-gpu --device=/dev/nvhost-prof-gpu --device=/dev/nvmap --device=/dev/nvhost-gpu --device=/dev/nvhost-as-gpu \
-  -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
-  -v /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro \
-  -v /etc/vulkansc/icd.d:/etc/vulkan/icd.d:ro \
-  -v /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro \
-  --entrypoint vulkaninfo \
-  ghcr.io/mutablelogic/go-whisper --summary
-
-# AMD/Intel/Raspberry Pi
+# AMD/Intel
 docker run --rm -it \
   --device=/dev/dri:/dev/dri \
   -v /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d:ro \
   --entrypoint vulkaninfo \
   ghcr.io/mutablelogic/go-whisper --summary
-  ```
+```
+
+If you see `deviceName = llvmpipe`, the GPU is not being passed through correctly.
+
+### Check NVIDIA Driver
+
+```bash
+# On host
+nvidia-smi
+
+# In container (CUDA images only)
+docker run --rm --runtime nvidia --gpus all --entrypoint nvidia-smi ghcr.io/mutablelogic/go-whisper-cuda
+```
+
+## Production Deployment
+
+For production deployments, an example [Hashicorp Nomad](https://www.nomadproject.io/) job file is provided at [etc/gowhisper.nomad.hcl](../etc/gowhisper.nomad.hcl).
+
+To deploy with Nomad:
+
+```bash
+# Create a variables file (gowhisper.vars.hcl)
+dc            = ["dc1"]
+data          = "/path/to/models"
+docker_image  = "ghcr.io/mutablelogic/go-whisper-cuda"
+docker_runtime = "nvidia"
+devices       = ["/dev/nvidia0", "/dev/nvidiactl", "/dev/nvidia-uvm"]
+
+# Run the job
+nomad job run -var-file=gowhisper.vars.hcl etc/gowhisper.nomad.hcl
+```
+
+See the job file for all available configuration variables.

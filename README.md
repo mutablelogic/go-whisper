@@ -34,7 +34,7 @@ docker run -d --name whisper-server \
   ghcr.io/mutablelogic/go-whisper run
 ```
 
-You'll then need to run the gowhisper CLI to interact with the server. Download it from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or [build from source](#from-source):
+You'll then need to run the gowhisper CLI to interact with the server. Download it from [GitHub Releases](https://github.com/mutablelogic/go-whisper/releases) or [build from source](doc/build.md):
 
 ```bash
 # Set the server address for CLI commands
@@ -115,7 +115,7 @@ Use `gowhisper --help` or `gowhisper <command> --help` for more options and deta
 - `sys` contains the [bindings](https://pkg.go.dev/github.com/mutablelogic/go-whisper/sys/whisper) to the `whisper.cpp` library
 - `third_party` is a submodule for the whisper.cpp source, and ffmpeg bindings
 
-# Architecture
+### Architecture
 
 This diagram shows the relationship between clients, the go-whisper server, and backend services.
 
@@ -182,34 +182,14 @@ flowchart LR
 
 ### Building
 
-#### Docker Images
+For detailed build instructions, see the [Build Guide](doc/build.md). This covers:
 
-If you are building a Docker image, you just need make and Docker installed. Some examples:
+- Building Docker images with CUDA or Vulkan support
+- Building from source on macOS (Metal), Linux (CUDA/Vulkan), and other platforms
+- Installing dependencies for each platform
+- Building the client-only binary
 
-- `GGML_CUDA=1 DOCKER_FILE=etc/Dockerfile.cuda DOCKER_REGISTRY=docker.io/user make docker` - builds a Docker container with the server binary for CUDA, tagged to a specific registry
-- `GGML_VULKAN=1 make docker` - builds a Docker container with the server binary for Vulkan
-- `OS=linux DOCKER_REGISTRY=docker.io/user make docker` - builds a Docker container for Linux, with the server binary without CUDA, tagged to a specific registry
-
-#### From Source
-
-It's recommended (especially for MacOS) to build the `whisper` binary without Docker, to utilize GPU acceleration.
-You can use the `Makefile` in the root directory and have the following dependencies met:
-
-- Recent version of Go (ie, 1.24+)
-- C++ compiler and cmake
-- For CUDA, you'll need the CUDA toolkit installed including the `nvcc` compiler
-- For Vulkan, you'll need the Vulkan SDK installed
-  - For the Rasperry Pi, install the following additional packages first: `sudo apt install libvulkan-dev libvulkan1 mesa-vulkan-drivers glslc`
-- For Metal, you'll need Xcode installed on macOS
-- For audio and video codec support (ie, x264, AAC, etc) when extracting the audio, you'll need to install appropriate codecs before building (see below).
-
-The following `Makefile` targets can be used:
-
-- `make` - creates the server binary, and places it in the `build` directory. Should link to Metal on macOS
-- `GGML_CUDA=1 make gowhisper` - creates the server binary linked to CUDA, and places it in the `build` directory. Should work for amd64 and arm64 (Jetson) platforms
-- `GGML_VULKAN=1 make gowhisper` - creates the server binary linked to Vulkan, and places it in the `build` directory.
-
-See all the other targets and variations in the `Makefile` for more information.
+For Docker deployment and GPU configuration, see the [Docker Guide](doc/docker.md).
 
 ## Contributing & License
 
