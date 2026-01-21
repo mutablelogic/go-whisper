@@ -166,7 +166,7 @@ func TestManager_Close(t *testing.T) {
 ///////////////////////////////////////////////////////////////////////////////
 // TESTS FOR OPENAI ROUTES
 
-func TestManager_Transcribe_OpenAI_StreamUnsupported(t *testing.T) {
+func TestManager_Transcribe_OpenAI_NoModelID(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager, err := pkg.New(tmpDir, pkg.OptOpenAIKey("test-key"))
 	if err != nil {
@@ -177,6 +177,9 @@ func TestManager_Transcribe_OpenAI_StreamUnsupported(t *testing.T) {
 	// Transcribe with no model ID should fail
 	req := &schema.TranscribeRequest{}
 	_, err = manager.Transcribe(context.Background(), nil, bytes.NewReader([]byte{}), req)
+	if err == nil {
+		t.Error("expected error when transcribing with no model ID")
+	}
 }
 
 func TestManager_Transcribe_OpenAI_DiarizeUnsupported(t *testing.T) {
@@ -191,9 +194,9 @@ func TestManager_Transcribe_OpenAI_DiarizeUnsupported(t *testing.T) {
 	diarizeTrue := true
 	req := &schema.TranscribeRequest{
 		TranslateRequest: schema.TranslateRequest{
-			Model:   "whisper-1",
-			Diarize: &diarizeTrue,
+			Model: "whisper-1",
 		},
+		Diarize: &diarizeTrue,
 	}
 	_, err = manager.Transcribe(context.Background(), nil, bytes.NewReader([]byte{}), req)
 	if err == nil {
@@ -209,15 +212,13 @@ func TestManager_Translate_OpenAI_DiarizeUnsupported(t *testing.T) {
 	}
 	defer manager.Close()
 
-	// Diarize should be rejected by OpenAI
-	diarizeTrue := true
+	// TranslateRequest doesn't support Diarize - test with empty model to verify error handling
 	req := &schema.TranslateRequest{
-		Model:   "whisper-1",
-		Diarize: &diarizeTrue,
+		Model: "",
 	}
 	_, err = manager.Translate(context.Background(), nil, bytes.NewReader([]byte{}), req)
 	if err == nil {
-		t.Error("expected error for diarize parameter in OpenAI translation")
+		t.Error("expected error for empty model in OpenAI translation")
 	}
 }
 

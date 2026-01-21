@@ -2,46 +2,16 @@ package httpclient
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	// Packages
 	client "github.com/mutablelogic/go-client"
-	"github.com/mutablelogic/go-server/pkg/types"
+	types "github.com/mutablelogic/go-server/pkg/types"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
-
-///////////////////////////////////////////////////////////////////////////////
-// TYPES
-
-// translationResponse handles both JSON and text responses
-type translationResponse struct {
-	schema.Transcription
-}
-
-// Unmarshal implements client.Unmarshaler to handle different content types
-func (r *translationResponse) Unmarshal(header http.Header, reader io.Reader) error {
-	contentType := header.Get("Content-Type")
-
-	// Check if it's JSON
-	if strings.Contains(contentType, "application/json") {
-		// Unmarshal as JSON
-		return json.NewDecoder(reader).Decode(&r.Transcription)
-	}
-
-	// Otherwise treat as plain text
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	r.Text = string(data)
-	return nil
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
