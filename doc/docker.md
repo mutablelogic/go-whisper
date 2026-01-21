@@ -50,7 +50,7 @@ docker run --rm -p 8081:8081 \
   ghcr.io/mutablelogic/go-whisper run --debug
 ```
 
-> **Note:** Raspberry Pi does not support Vulkan GPU acceleration for whisper due to hardware limitations. Use CPU-only mode instead.
+> **Note:** Raspberry Pi does not support Vulkan GPU acceleration for whisper due to hardware limitations. Use CPU-only mode instead (`--whisper.gpu=false`)
 
 ## Running with CUDA GPU Acceleration
 
