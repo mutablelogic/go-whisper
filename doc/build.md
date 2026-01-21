@@ -1,6 +1,6 @@
 # Building
 
-You can build `gowhsiper` in one of three ways:
+You can build `gowhisper` in one of three ways:
 
 1. Using Docker to build a container with the server binary, with either Vulkan or CUDA support built-in
 2. Building the server from source using the provided `Makefile`, with either Vulkan, CUDA, or Metal support. This is the best option for macOS users to get GPU acceleration.
