@@ -24,9 +24,9 @@ ENV PATH=$PATH:/usr/local/go/bin
 WORKDIR /app
 COPY . .
 
-# Make whisper with Vulkan support
+# Make whisper with Vulkan support (disable native CPU optimizations for portability)
 ENV GGML_VULKAN=1
-RUN make clean && make
+RUN make clean && GGML_NATIVE=OFF make
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime

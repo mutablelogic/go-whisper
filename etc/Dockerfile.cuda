@@ -24,9 +24,9 @@ ENV PATH=$PATH:/usr/local/go/bin
 WORKDIR /app
 COPY . .
 
-# Make whisper with CUDA support
+# Make whisper with CUDA support (disable native CPU optimizations for portability)
 ENV GGML_CUDA=1
-RUN make clean && make 
+RUN make clean && GGML_NATIVE=OFF make 
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime

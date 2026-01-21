@@ -13,8 +13,8 @@ ARG OS
 
 RUN apt -y update \
     && apt install -y ca-certificates build-essential libgomp1 cmake git pkg-config nasm curl \
-    && apt install -y libfreetype-dev libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libnuma-dev \
-    && apt install -y libvulkan-dev glslc
+    && apt install -y libmp3lame-dev libopus-dev libvorbis-dev libvpx-dev libx264-dev libx265-dev libdav1d-dev libnuma-dev \
+    && apt install -y libvulkan-dev libplacebo-dev libshaderc-dev glslang-tools glslc
 
 # Install go
 RUN curl -sL https://golang.org/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz | tar -C /usr/local -xz
@@ -24,16 +24,16 @@ ENV PATH=$PATH:/usr/local/go/bin
 WORKDIR /app
 COPY . .
 
-# Make whisper with Vulkan support
+# Make whisper with Vulkan support (disable native CPU optimizations for portability)
 ENV GGML_VULKAN=1
-RUN make clean && make
+RUN make clean && GGML_NATIVE=OFF make
 
 # Setup runtime container
 FROM ${BASE_RUN_CONTAINER} AS runtime
-RUN apt-get -y update \
+RUN apt -y update \
     && apt install -y ca-certificates libgomp1 \
-    && apt install -y libfreetype6 libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx9 libx264-164 libx265-215 libnuma1 \
-    && apt install -y libvulkan1 vulkan-tools    
+    && apt install -y libmp3lame0 libopus0 libvorbis0a libvorbisenc2 libvpx9 libx264-164 libx265-215 libdav1d7 libnuma1 \
+    && apt install -y libvulkan1 libshaderc1 libplacebo349 vulkan-tools mesa-vulkan-drivers
 
 # Copy built gowhisper binary
 COPY --from=build --chmod=755 /app/build/gowhisper /usr/local/bin/gowhisper

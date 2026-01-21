@@ -44,10 +44,10 @@ ifeq ($(GGML_CUDA),1)
 	DOCKER_FILE = etc/Dockerfile.cuda
 	DOCKER_SUFFIX = -cuda
 	ifeq ($(ARCH),arm64)
-		CMAKE_FLAGS += -DGGML_NATIVE=OFF '-DCMAKE_CUDA_ARCHITECTURES=87'
+		CMAKE_FLAGS += '-DCMAKE_CUDA_ARCHITECTURES=87'
 	endif
 	ifeq ($(ARCH),amd64)
-		CMAKE_FLAGS += -DGGML_NATIVE=OFF '-DCMAKE_CUDA_ARCHITECTURES=75;86;89'
+		CMAKE_FLAGS += '-DCMAKE_CUDA_ARCHITECTURES=75;86;89'
 	endif
 endif
 
@@ -55,8 +55,13 @@ endif
 ifeq ($(GGML_VULKAN),1)
 	TEST_FLAGS += -tags vulkan 
 	BUILD_FLAGS += -tags vulkan
-	CMAKE_FLAGS += -DGGML_VULKAN=ON -DGGML_NATIVE=OFF
+	CMAKE_FLAGS += -DGGML_VULKAN=ON
 	DOCKER_FILE = etc/Dockerfile.vulkan
+endif
+
+# If GGML_NATIVE is set to OFF, disable native CPU optimizations (for portable builds)
+ifeq ($(GGML_NATIVE),OFF)
+	CMAKE_FLAGS += -DGGML_NATIVE=OFF
 endif
 
 # Docker
