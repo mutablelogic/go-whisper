@@ -65,6 +65,9 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opts
 			}
 			return nil
 		}))
+	} else if opt.format != "" {
+		// Set Accept header based on requested format
+		reqOpts = append(reqOpts, client.OptReqHeader("Accept", string(opt.format)))
 	}
 
 	// Perform the request

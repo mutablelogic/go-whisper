@@ -7,7 +7,7 @@ import (
 
 	// Packages
 	otel "github.com/mutablelogic/go-client/pkg/otel"
-	"github.com/mutablelogic/go-llm"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	httpclient "github.com/mutablelogic/go-whisper/pkg/httpclient"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
@@ -124,6 +124,6 @@ func formatFromString(format string) (httpclient.FormatType, error) {
 	case "json", string(httpclient.FormatJSON):
 		return httpclient.FormatJSON, nil
 	default:
-		return "", llm.ErrBadParameter.Withf("unsupported format: %q", format)
+		return "", httpresponse.ErrBadRequest.Withf("unsupported format: %q", format)
 	}
 }

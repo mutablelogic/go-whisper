@@ -45,10 +45,15 @@ func transcribeCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manag
 
 	// Create text stream if requested
 	var stream *httpresponse.TextStream
-	mimetype, err := types.ParseContentType(r.Header.Get(types.ContentAcceptHeader))
-	if err != nil {
-		return httpresponse.Error(w, httpresponse.ErrBadRequest.With("invalid Accept header"), err.Error())
-	} else if mimetype == types.ContentTypeTextStream {
+	var mimetype string
+	if accept := r.Header.Get(types.ContentAcceptHeader); accept != "" {
+		var err error
+		mimetype, err = types.ParseContentType(accept)
+		if err != nil {
+			return httpresponse.Error(w, httpresponse.ErrBadRequest.With("invalid Accept header"), err.Error())
+		}
+	}
+	if mimetype == types.ContentTypeTextStream {
 		stream = httpresponse.NewTextStream(w)
 		if stream == nil {
 			return httpresponse.Error(w, httpresponse.ErrInternalError.With("cannot create text stream"))

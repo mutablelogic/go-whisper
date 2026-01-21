@@ -51,8 +51,8 @@ func (seg *Segment) WriteSRT(w io.Writer, offset time.Duration) {
 func (seg *Segment) WriteVTT(w io.Writer, offset time.Duration) {
 	// Write header if first segment
 	if seg.Id == 0 {
-		// Note: VTT header must be followed by a blank line, so we add \n after it
-		fmt.Fprintln(w, "WEBVTT\n")
+		// Note: VTT header must be followed by a blank line
+		fmt.Fprint(w, "WEBVTT\n\n")
 	}
 
 	// Write text segment
@@ -105,11 +105,11 @@ func (seg *Segment) WriteJSON(w io.Writer) {
 }
 
 func WriteJSONTrailer(w io.Writer) {
-	fmt.Fprintln(w, "\n]")
+	fmt.Fprint(w, "\n]\n")
 }
 
 func WriteTextTrailer(w io.Writer) {
-	fmt.Fprintln(w, "\n")
+	fmt.Fprint(w, "\n\n")
 }
 
 //////////////////////////////////////////////////////////////////////////////
