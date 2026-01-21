@@ -48,7 +48,7 @@ variable "hosts" {
 }
 
 variable "docker_image" {
-  description = "Docker image for nanoradio"
+  description = "Docker image for gowhisper"
   type        = string
   default     = "ghcr.io/mutablelogic/go-whisper"
 }
