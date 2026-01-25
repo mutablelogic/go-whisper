@@ -9,9 +9,9 @@ require (
 	github.com/djthorpe/go-errors v1.0.3
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.1.0
-	github.com/mutablelogic/go-client v1.3.3
+	github.com/mutablelogic/go-client v1.3.4
 	github.com/mutablelogic/go-media v1.8.3
-	github.com/mutablelogic/go-server v1.5.17
+	github.com/mutablelogic/go-server v1.5.18
 	github.com/orcaman/writerseeker v0.0.0-20200621085525-1d3f536ff85e
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.39.0
@@ -24,7 +24,6 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/djthorpe/go-pg v1.0.7 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
@@ -36,6 +35,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.8.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/mutablelogic/go-pg v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/yinyin/go-ldap-schema-parser v0.0.0-20190716182935-542aadd3dcb5 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect

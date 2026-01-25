@@ -48,10 +48,10 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opts
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
 	}
 
+	// Append path to request options
+	reqOpts := append(opt.reqOpts, client.OptPath("transcribe"))
+
 	// If streaming callback provided, handle streaming
-	var reqOpts []client.RequestOpt = []client.RequestOpt{
-		client.OptPath("transcribe"),
-	}
 	var response schema.Transcription
 	if opt.segmentCallback != nil {
 		reqOpts = append(reqOpts, client.OptReqHeader("Accept", "text/event-stream"))

@@ -2,7 +2,15 @@ package schema
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"slices"
 	"time"
+
+	// Packages
+	client "github.com/mutablelogic/go-client"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
+	types "github.com/mutablelogic/go-server/pkg/types"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -24,6 +32,8 @@ type TranscriptionSummary struct {
 	Language string    `json:"language,omitempty"`
 	Duration Timestamp `json:"duration,omitempty"`
 }
+
+var _ client.Unmarshaler = (*Transcription)(nil)
 
 //////////////////////////////////////////////////////////////////////////////
 // STRINGIFY
@@ -61,4 +71,42 @@ func (t *Timestamp) UnmarshalJSON(data []byte) error {
 func SecToTimestamp(sec float64) Timestamp {
 	// Convert seconds to Timestamp
 	return Timestamp(time.Duration(sec * float64(time.Second)))
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// UNMARSHAL
+
+// Unmarshal implements the client.Unmarshaler interface for transcriptions,
+// which can accept JSON, SRT, VTT or plain text formats.
+func (t *Transcription) Unmarshal(header http.Header, reader io.Reader) error {
+	mimetype, err := types.ParseContentType(header.Get(types.ContentTypeHeader))
+	if err != nil {
+		return err
+	}
+	switch {
+	case slices.Contains(ContentTypeSRTVariants, mimetype):
+		if data, err := io.ReadAll(reader); err != nil {
+			return err
+		} else {
+			t.Text = string(data)
+			return nil
+		}
+	case slices.Contains(ContentTypeVTTVariants, mimetype):
+		if data, err := io.ReadAll(reader); err != nil {
+			return err
+		} else {
+			t.Text = string(data)
+			return nil
+		}
+	case mimetype == types.ContentTypeTextPlain:
+		if data, err := io.ReadAll(reader); err != nil {
+			return err
+		} else {
+			t.Text = string(data)
+			return nil
+		}
+	default:
+		// For other types, pass through to underlying JSON unmarshaller
+		return httpresponse.ErrNotImplemented
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	// Packages
+	client "github.com/mutablelogic/go-client"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
@@ -14,6 +15,7 @@ import (
 type opt struct {
 	schema.TranscribeMultipartRequest
 	format           FormatType
+	reqOpts          []client.RequestOpt
 	segmentCallback  func(*schema.Segment) error
 	progressCallback func(*schema.Event) error
 }
@@ -117,6 +119,16 @@ func WithSegmentCallback(callback func(*schema.Segment) error) Opt {
 func WithProgressCallback(callback func(*schema.Event) error) Opt {
 	return func(o *opt) error {
 		o.progressCallback = callback
+		return nil
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// OPTIONS - REQUEST OPTIONS
+
+func WithRequestOpts(opts ...client.RequestOpt) Opt {
+	return func(o *opt) error {
+		o.reqOpts = append(o.reqOpts, opts...)
 		return nil
 	}
 }

@@ -55,10 +55,10 @@ func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opts 
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
 	}
 
+	// Set request options
+	reqOpts := append(opt.reqOpts, client.OptPath("translate"))
+
 	// If streaming callback provided, handle streaming
-	var reqOpts []client.RequestOpt = []client.RequestOpt{
-		client.OptPath("translate"),
-	}
 	var response schema.Transcription
 	if opt.segmentCallback != nil {
 		reqOpts = append(reqOpts, client.OptReqHeader("Accept", "text/event-stream"))
