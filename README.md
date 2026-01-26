@@ -78,7 +78,7 @@ Available local models can be downloaded from [Hugging Face](https://huggingface
 
 ## Docker Deployment
 
-For detailed Docker deployment instructions, including GPU support, environment configuration, and production setup, see the [Docker Guide](doc/docker.md).
+Docker containers [are available](https://github.com/orgs/mutablelogic/packages?repo_name=go-whisper) for AMD64, ARM64 architectures for Linux, in two variants which are compatible with Vulkan and CUDA GPU's. For detailed Docker deployment instructions, including GPU support, environment configuration, and production setup, see the [Docker Guide](doc/docker.md).
 
 ## CLI Usage Examples
 

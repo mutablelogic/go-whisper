@@ -20,8 +20,7 @@ If you are logged into Docker Hub, you can then use `make docker-push` to push t
 
 ## From Source
 
-It's recommended (especially for MacOS) to build the `whisper` binary without Docker, to utilize GPU acceleration or native CPU support, since the docker images do not utilize
-any optimizations for your specific CPU.
+It's recommended for MacOS to build the `whisper` binary without Docker, to utilize GPU acceleration or native CPU support, since the docker images do not utilize any optimizations for your specific CPU. It's not possible to build for Windows at the moment, but there is an [issue tracking this feature](https://github.com/mutablelogic/go-whisper/issues/93)
 
 However, in order to build from source, there are additional dependencies that need to be met:
 
