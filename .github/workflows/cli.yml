@@ -41,11 +41,22 @@ jobs:
         with:
           go-version: "1.25"
 
-      - name: Build gowhisper-client
+      - name: Build gowhisper-client (Unix)
+        if: matrix.goos != 'windows'
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: make gowhisper-client
+
+      - name: Build gowhisper-client (Windows)
+        if: matrix.goos == 'windows'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        shell: bash
+        run: |
+          mkdir -p build
+          go build -ldflags "-s -w" -tags client -o build/gowhisper.exe ./cmd/gowhisper
 
       - name: Rename binary for release
         shell: bash
