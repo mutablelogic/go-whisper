@@ -25,6 +25,10 @@ jobs:
             arch: amd64
             goos: linux
             goarch: amd64
+          - os: windows-latest
+            arch: amd64
+            goos: windows
+            goarch: amd64
 
     steps:
       - name: Checkout code
@@ -44,15 +48,18 @@ jobs:
         run: make gowhisper-client
 
       - name: Rename binary for release
+        shell: bash
         run: |
-          # Remove quarantine attributes to prevent Gatekeeper issues on darwin
-          # xattr -c build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
-          mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            mv build/gowhisper.exe build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}.exe
+          else
+            mv build/gowhisper build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+          fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: build/gowhisper-${{ matrix.goos }}-${{ matrix.goarch }}*
 
   release:
     name: Create Release
