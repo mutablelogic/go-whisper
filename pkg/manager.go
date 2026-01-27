@@ -378,7 +378,6 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, w schema.SegmentWriter, 
 			Temperature: req.Temperature,
 		},
 		Language: req.Language,
-		Stream:   nil,
 	}
 
 	// Add diarization option
@@ -394,17 +393,16 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, w schema.SegmentWriter, 
 		}
 	}
 
-	// Enable streaming if a segment writer is provided
+	// Build stream callback if a segment writer is provided
 	var segmentId int32
+	var streamfn func(schema.Event)
 	if w != nil {
-		openaiReq.Stream = types.BoolPtr(true)
-
 		// Use json format for streaming (verbose_json not supported with streaming)
 		if !types.PtrBool(req.Diarize) {
 			openaiReq.Format = types.StringPtr(openai.FormatJson)
 		}
 
-		m.openai.SetStreamCallback(func(evt schema.Event) {
+		streamfn = func(evt schema.Event) {
 			// Handle segment events for diarization or delta events for regular transcription
 			if evt.Type == schema.TranscribeStreamSegmentType {
 				// Diarized segment event - fields are at root level
@@ -422,13 +420,13 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, w schema.SegmentWriter, 
 					Id:   segmentId,
 					Text: evt.Delta,
 				})
+				segmentId++
 			}
-		})
-		defer m.openai.SetStreamCallback(nil) // Clear callback after use
+		}
 	}
 
 	// Call OpenAI API
-	resp, err := m.openai.Transcribe(ctx, openaiReq)
+	resp, err := m.openai.Transcribe(ctx, openaiReq, streamfn)
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,6 @@ type TranscriptionRequest struct {
 	TranslationRequest
 	Include                []string          `json:"include,omitempty"`                  // logprobs
 	Language               *string           `json:"language,omitempty"`                 // Transcription only en, es, fr, etc.
-	Stream                 *bool             `json:"stream,omitempty"`                   // If true, returns a stream of events
 	Timestamps             []string          `json:"timestamp_granularities,omitempty"`  // combination of word, segment
 	ChunkingStrategy       *ChunkingStrategy `json:"chunking_strategy,omitempty"`        // "auto" or server_vad object
 	KnownSpeakerNames      []string          `json:"known_speaker_names,omitempty"`      // Speaker names for diarization (up to 4)

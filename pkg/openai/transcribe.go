@@ -10,15 +10,15 @@ import (
 
 	// Packages
 	client "github.com/mutablelogic/go-client"
-	types "github.com/mutablelogic/go-server/pkg/types"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
 /////////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-// Transcribe performs a transcription request in the language of the speech
-func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*TranscriptionResponse, error) {
+// Transcribe performs a transcription request in the language of the speech.
+// If streamfn is provided, streaming mode is enabled and events will be passed to the callback.
+func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest, streamfn func(schema.Event)) (*TranscriptionResponse, error) {
 	var response TranscriptionResponse
 
 	// Set default model
@@ -41,7 +41,16 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*Tra
 	opts := []client.RequestOpt{
 		client.OptPath(TranscribePath),
 	}
-	if types.PtrBool(req.Stream) {
+
+	// Build the actual request to send - wrap with stream field if streaming
+	type streamingRequest struct {
+		TranscriptionRequest
+		Stream bool `json:"stream,omitempty"`
+	}
+	actualReq := streamingRequest{TranscriptionRequest: req}
+
+	if streamfn != nil {
+		actualReq.Stream = true
 		opts = append(opts, client.OptTextStreamCallback(func(e client.TextStreamEvent) error {
 			// We ignore the event if it is the stream done text
 			if strings.TrimSpace(e.Data) == streamDoneText {
@@ -52,8 +61,8 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*Tra
 			var evt schema.Event
 			if err := e.Json(&evt); err != nil {
 				return fmt.Errorf("failed to parse event: %w", err)
-			} else if c.streamfn != nil {
-				c.streamfn(evt)
+			} else if streamfn != nil {
+				streamfn(evt)
 			}
 
 			// Return success
@@ -62,7 +71,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*Tra
 	}
 
 	// Create multipart request, and execute it
-	if payload, err := client.NewStreamingMultipartRequest(req, client.ContentTypeAny); err != nil {
+	if payload, err := client.NewStreamingMultipartRequest(actualReq, client.ContentTypeAny); err != nil {
 		return nil, err
 	} else if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
 		return nil, err

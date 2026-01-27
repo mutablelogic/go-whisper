@@ -3,7 +3,6 @@ package openai
 import (
 	// Packages
 	"github.com/mutablelogic/go-client"
-	"github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -11,7 +10,6 @@ import (
 
 type Client struct {
 	*client.Client
-	streamfn func(schema.Event)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -35,7 +33,3 @@ func New(apikey string, opts ...client.ClientOpt) (*Client, error) {
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
-
-func (c *Client) SetStreamCallback(fn func(schema.Event)) {
-	c.streamfn = fn
-}

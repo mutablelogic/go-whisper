@@ -37,7 +37,7 @@ func Test_Transcribe_001(t *testing.T) {
 			File:   multipart.File{Body: f},
 			Format: types.StringPtr(openai.FormatJson),
 		},
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call transcribe endpoint")
 	}
@@ -63,7 +63,7 @@ func Test_Transcribe_002(t *testing.T) {
 			File:   multipart.File{Body: f},
 			Format: types.StringPtr(openai.FormatText),
 		},
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call transcribe endpoint")
 	}
@@ -89,7 +89,7 @@ func Test_Transcribe_003(t *testing.T) {
 			File:   multipart.File{Body: f},
 			Format: types.StringPtr(openai.FormatSrt),
 		},
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call transcribe endpoint")
 	}
@@ -115,7 +115,7 @@ func Test_Transcribe_004(t *testing.T) {
 			File:   multipart.File{Body: f},
 			Format: types.StringPtr(openai.FormatVtt),
 		},
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call transcribe endpoint")
 	}
@@ -151,7 +151,7 @@ func Test_Transcribe_Diarization(t *testing.T) {
 		ChunkingStrategy: &openai.ChunkingStrategy{
 			Type: openai.ChunkingStrategyServerVAD,
 		},
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call transcribe endpoint with diarization")
 	}
@@ -194,7 +194,7 @@ func Test_Transcribe_ChunkingStrategyAuto(t *testing.T) {
 		ChunkingStrategy: &openai.ChunkingStrategy{
 			Type: openai.ChunkingStrategyAuto,
 		},
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call transcribe endpoint with auto chunking")
 	}
@@ -219,10 +219,10 @@ func Test_Transcribe_Streaming(t *testing.T) {
 
 	// Track streaming events
 	var events []schema.Event
-	client.SetStreamCallback(func(evt schema.Event) {
+	streamfn := func(evt schema.Event) {
 		t.Logf("Stream event: type=%s delta=%q text=%q", evt.Type, evt.Delta, evt.Text)
 		events = append(events, evt)
-	})
+	}
 
 	// Perform streaming transcription
 	_, err = client.Transcribe(ctx, openai.TranscriptionRequest{
@@ -231,8 +231,7 @@ func Test_Transcribe_Streaming(t *testing.T) {
 			File:   multipart.File{Body: f},
 			Format: types.StringPtr(openai.FormatText),
 		},
-		Stream: types.BoolPtr(true),
-	})
+	}, streamfn)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call streaming transcribe endpoint")
 	}
@@ -275,10 +274,10 @@ func Test_Transcribe_Streaming_Json(t *testing.T) {
 
 	// Track streaming events
 	var events []schema.Event
-	client.SetStreamCallback(func(evt schema.Event) {
+	streamfn := func(evt schema.Event) {
 		t.Logf("Stream event: type=%s delta=%q text=%q", evt.Type, evt.Delta, evt.Text)
 		events = append(events, evt)
-	})
+	}
 
 	// Perform streaming transcription with json format
 	_, err = client.Transcribe(ctx, openai.TranscriptionRequest{
@@ -287,8 +286,7 @@ func Test_Transcribe_Streaming_Json(t *testing.T) {
 			File:   multipart.File{Body: f},
 			Format: types.StringPtr(openai.FormatJson),
 		},
-		Stream: types.BoolPtr(true),
-	})
+	}, streamfn)
 	if !assert.NoError(err) {
 		assert.FailNow("failed to call streaming transcribe endpoint")
 	}

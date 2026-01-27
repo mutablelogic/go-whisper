@@ -60,8 +60,14 @@ func (cmd *TranslateCommand) Run(ctx *Globals) (err error) {
 		return err
 	}
 
-	// Add real-time segment printing callback
+	// Add real-time segment printing callback with ID tracking
+	var segmentId int32
 	opts = append(opts, httpclient.WithSegmentCallback(func(seg *schema.Segment) error {
+		// Assign incrementing ID if segment has no ID
+		if seg.Id == 0 {
+			seg.Id = segmentId
+		}
+		segmentId++
 		writeSegment(os.Stdout, seg, format)
 		return nil
 	}))
