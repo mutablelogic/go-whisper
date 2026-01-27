@@ -4,10 +4,8 @@ import (
 	"runtime"
 
 	// Packages
-	"go.opentelemetry.io/otel/trace"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
+	trace "go.opentelemetry.io/otel/trace"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -50,7 +48,7 @@ func applyOpts(opt ...Opt) (opts, error) {
 func OptMaxConcurrent(v int) Opt {
 	return func(o *opts) error {
 		if v < 1 {
-			return ErrBadParameter.With("max concurrent must be greater than zero")
+			return httpresponse.ErrBadRequest.With("max concurrent must be greater than zero")
 		}
 		o.max = v
 		return nil

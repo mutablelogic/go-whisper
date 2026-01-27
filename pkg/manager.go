@@ -11,6 +11,7 @@ import (
 	multipart "github.com/mutablelogic/go-client/pkg/multipart"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
 	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
 	openai "github.com/mutablelogic/go-whisper/pkg/openai"
@@ -18,9 +19,6 @@ import (
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	attribute "go.opentelemetry.io/otel/attribute"
 	trace "go.opentelemetry.io/otel/trace"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -358,7 +356,7 @@ func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema
 func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Validate unsupported features
 	if types.PtrBool(req.Diarize) {
-		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
+		return nil, httpresponse.ErrBadRequest.With("diarize is not supported by OpenAI")
 	}
 
 	// Determine filename with extension (default to .wav if not provided)
@@ -430,7 +428,7 @@ func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.
 func (m *Manager) transcribeElevenLabs(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Validate unsupported features
 	if req.Prompt != nil && *req.Prompt != "" {
-		return nil, ErrBadParameter.With("prompt is not supported by ElevenLabs")
+		return nil, httpresponse.ErrBadRequest.With("prompt is not supported by ElevenLabs")
 	}
 
 	// Create ElevenLabs transcription request
@@ -459,7 +457,7 @@ func (m *Manager) transcribeElevenLabs(ctx context.Context, r io.Reader, req *sc
 // translateElevenLabs translates using the ElevenLabs API
 func (m *Manager) translateElevenLabs(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
 	// ElevenLabs only supports transcription, not translation
-	return nil, ErrBadParameter.With("ElevenLabs does not support translation, only transcription")
+	return nil, httpresponse.ErrBadRequest.With("ElevenLabs does not support translation, only transcription")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
