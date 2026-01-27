@@ -67,7 +67,8 @@ Available local models can be downloaded from [Hugging Face](https://huggingface
 | GGML Whisper `*.bin` | ✅ | ✅ |  | ✅ |
 | GGML Whisper `ggml-small.en-tdrz.bin`[^1] | ✅ |  | ✅ | ✅ |
 | OpenAI `whisper-1` [^2] | ✅ | ✅ |  | |
-| OpenAI `gpt-4o-*-transcribe` [^4],[^5] | ✅ | |  | ✅ |
+| OpenAI `gpt-4o-*-transcribe` [^4],[^5] | ✅ | |  | ✅ [^6] |
+| OpenAI `gpt-4o-transcribe-diarize` [^7] | ✅ | | ✅ | ✅ |
 | ElevenLabs `scribe_v1`,`scribe_v2` [^3] | ✅ |  |  ✅ | |
 
 [^1]: <https://huggingface.co/akashmjn/tinydiarize-whisper.cpp>
@@ -75,6 +76,8 @@ Available local models can be downloaded from [Hugging Face](https://huggingface
 [^3]: <https://elevenlabs.io/docs/models#scribe-v1>
 [^4]: <https://platform.openai.com/docs/models/gpt-4o-transcribe>
 [^5]: <https://platform.openai.com/docs/models/gpt-4o-mini-transcribe>
+[^6]: Realtime streaming with `gpt-4o-*-transcribe` models emits text deltas only (no timestamps)
+[^7]: Realtime streaming with `gpt-4o-transcribe-diarize` emits complete segments with speaker labels and timestamps
 
 ## Docker Deployment
 

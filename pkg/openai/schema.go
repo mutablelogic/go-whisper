@@ -25,10 +25,21 @@ type TranslationRequest struct {
 
 type TranscriptionRequest struct {
 	TranslationRequest
-	Include    []string `json:"include,omitempty"`                 // logprobs
-	Language   *string  `json:"language,omitempty"`                // Transcription only en, es, fr, etc.
-	Stream     *bool    `json:"stream,omitempty"`                  // If true, returns a stream of events
-	Timestamps []string `json:"timestamp_granularities,omitempty"` // combination of word, segment
+	Include                []string          `json:"include,omitempty"`                  // logprobs
+	Language               *string           `json:"language,omitempty"`                 // Transcription only en, es, fr, etc.
+	Stream                 *bool             `json:"stream,omitempty"`                   // If true, returns a stream of events
+	Timestamps             []string          `json:"timestamp_granularities,omitempty"`  // combination of word, segment
+	ChunkingStrategy       *ChunkingStrategy `json:"chunking_strategy,omitempty"`        // "auto" or server_vad object
+	KnownSpeakerNames      []string          `json:"known_speaker_names,omitempty"`      // Speaker names for diarization (up to 4)
+	KnownSpeakerReferences []string          `json:"known_speaker_references,omitempty"` // Audio samples as data URLs (2-10 seconds each)
+}
+
+// ChunkingStrategy controls how the audio is cut into chunks for diarization
+type ChunkingStrategy struct {
+	Type              string   `json:"type"`                          // "auto" or "server_vad"
+	VadThreshold      *float64 `json:"threshold,omitempty"`           // VAD threshold (0.0-1.0)
+	PrefixPaddingMs   *int     `json:"prefix_padding_ms,omitempty"`   // Padding before speech (ms)
+	SilenceDurationMs *int     `json:"silence_duration_ms,omitempty"` // Silence duration to end segment (ms)
 }
 
 type TranscriptionResponse struct {
@@ -37,14 +48,22 @@ type TranscriptionResponse struct {
 	Duration schema.Timestamp        `json:"duration,omitempty"`
 	Text     string                  `json:"text,omitempty"`
 	Segment  []*TranscriptionSegment `json:"segments,omitempty" writer:",width:40,wrap"`
+	Usage    *TranscriptionUsage     `json:"usage,omitempty"`
+}
+
+type TranscriptionUsage struct {
+	Type    string `json:"type"`    // "duration"
+	Seconds int    `json:"seconds"` // Billed duration in seconds
 }
 
 type TranscriptionSegment struct {
-	Id               int32            `json:"id"`
-	Seek             uint32           `json:"seek"`
+	Type             string           `json:"type,omitempty"` // Segment type (e.g., "transcript.text.segment" for diarized)
+	Id               any              `json:"id"`             // Segment ID (int32 for verbose_json, string for diarized_json)
+	Seek             uint32           `json:"seek,omitempty"`
 	Start            schema.Timestamp `json:"start"`
 	End              schema.Timestamp `json:"end"`
 	Text             string           `json:"text"`
+	Speaker          string           `json:"speaker,omitempty"`           // Speaker label for diarized transcription
 	Tokens           []uint32         `json:"tokens,omitempty"`            // Array of token IDs for the text content.
 	Temperature      *float64         `json:"temperature,omitempty"`       // Temperature parameter used for generating the segment.
 	AvgLogProb       *float64         `json:"avg_logprob,omitempty"`       // Average logprob of the segment. If the value is lower than -1, consider the logprobs failed.
@@ -62,21 +81,39 @@ const (
 )
 
 const (
-	FormatJson        = "json"
-	FormatVerboseJson = "verbose_json"
-	FormatText        = "text"
-	FormatSrt         = "srt"
-	FormatVtt         = "vtt"
+	FormatJson         = "json"
+	FormatVerboseJson  = "verbose_json"
+	FormatDiarizedJson = "diarized_json"
+	FormatText         = "text"
+	FormatSrt          = "srt"
+	FormatVtt          = "vtt"
 )
 
 const (
 	streamDoneText = "[DONE]" // Text indicating the end of a stream
 )
 
+const (
+	ChunkingStrategyAuto      = "auto"       // Auto chunking with VAD
+	ChunkingStrategyServerVAD = "server_vad" // Server-side VAD chunking (required for diarization)
+)
+
 var (
-	Models  = []string{"whisper-1", "gpt-4o-mini-transcribe", "gpt-4o-transcribe"} // Supported models for transcription and translation
+	// Supported models for transcription and translation
+	Models = []string{
+		"whisper-1",
+		"gpt-4o-mini-transcribe",
+		"gpt-4o-mini-transcribe-2025-12-15",
+		"gpt-4o-transcribe",
+	}
+	// Supported models for diarization
+	DiarizeModels = []string{
+		"gpt-4o-transcribe-diarize",
+	}
+
+	// Supported response formats
 	Formats = []string{
-		FormatText, FormatJson, FormatVerboseJson, FormatSrt, FormatVtt,
+		FormatText, FormatJson, FormatVerboseJson, FormatDiarizedJson, FormatSrt, FormatVtt,
 	}
 )
 
@@ -84,22 +121,25 @@ var (
 // STRINGIFY
 
 func (s TranscriptionRequest) String() string {
-	data, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
+	return stringify(s)
 }
 
 func (s TranslationRequest) String() string {
-	data, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
+	return stringify(s)
 }
 
 func (s TranscriptionResponse) String() string {
+	return stringify(s)
+}
+
+func (c ChunkingStrategy) String() string {
+	if c.Type == "" || c.Type == ChunkingStrategyAuto {
+		return ChunkingStrategyAuto
+	}
+	return stringify(c)
+}
+
+func stringify(s any) string {
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err.Error()
@@ -127,6 +167,9 @@ func (s *TranscriptionResponse) Unmarshal(header http.Header, r io.Reader) error
 			s.Text = string(data)
 		}
 		return nil
+	case types.ContentTypeTextStream:
+		// Streaming responses are handled by the stream callback, not here
+		return httpresponse.ErrNotImplemented
 	}
 
 	// Decode error
@@ -148,11 +191,28 @@ func (s *TranscriptionResponse) Segments() *schema.Transcription {
 	}
 	for _, seg := range s.Segment {
 		resp.Segments = append(resp.Segments, &schema.Segment{
-			Id:    seg.Id,
-			Start: seg.Start,
-			End:   seg.End,
-			Text:  seg.Text,
+			Id:      seg.IdAsInt32(),
+			Start:   seg.Start,
+			End:     seg.End,
+			Text:    seg.Text,
+			Speaker: seg.Speaker,
 		})
 	}
 	return resp
+}
+
+// IdAsInt32 returns the segment ID as int32, handling both numeric and string IDs
+func (seg *TranscriptionSegment) IdAsInt32() int32 {
+	switch v := seg.Id.(type) {
+	case float64:
+		return int32(v)
+	case int:
+		return int32(v)
+	case int32:
+		return v
+	case int64:
+		return int32(v)
+	default:
+		return 0
+	}
 }

@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	// Packages
-	"github.com/mutablelogic/go-client"
-	"github.com/mutablelogic/go-server/pkg/types"
-	"github.com/mutablelogic/go-whisper/pkg/schema"
+	client "github.com/mutablelogic/go-client"
+	types "github.com/mutablelogic/go-server/pkg/types"
+	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -24,8 +24,8 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*Tra
 	// Set default model
 	if req.Model == "" {
 		req.Model = Models[0]
-	} else if !slices.Contains(Models, req.Model) {
-		return nil, fmt.Errorf("invalid model %q, must be one of %v", req.Model, Models)
+	} else if !slices.Contains(Models, req.Model) && !slices.Contains(DiarizeModels, req.Model) {
+		return nil, fmt.Errorf("invalid model %q, must be one of %v or %v", req.Model, Models, DiarizeModels)
 	}
 
 	// Check file, set path if not provided
@@ -62,7 +62,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest) (*Tra
 	}
 
 	// Create multipart request, and execute it
-	if payload, err := client.NewMultipartRequest(req, client.ContentTypeAny); err != nil {
+	if payload, err := client.NewStreamingMultipartRequest(req, client.ContentTypeAny); err != nil {
 		return nil, err
 	} else if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
 		return nil, err
