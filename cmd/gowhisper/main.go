@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	// Packages
@@ -100,7 +101,7 @@ func run(ctx *kong.Context, globals *Globals) int {
 	}
 
 	// Create the context and cancel function
-	globals.ctx, globals.cancel = signal.NotifyContext(parent, os.Interrupt)
+	globals.ctx, globals.cancel = signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	defer globals.cancel()
 
 	// Open Telemetry
