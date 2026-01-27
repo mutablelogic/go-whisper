@@ -50,7 +50,7 @@ func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opts 
 	req.Model = model
 
 	// Create multipart payload
-	payload, err := client.NewMultipartRequest(&req, types.ContentTypeJSON)
+	payload, err := client.NewStreamingMultipartRequest(&req, types.ContentTypeJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
 	}

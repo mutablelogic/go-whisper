@@ -43,7 +43,7 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opts
 	}
 
 	// Create multipart payload
-	payload, err := client.NewMultipartRequest(&opt.TranscribeMultipartRequest, types.ContentTypeJSON)
+	payload, err := client.NewStreamingMultipartRequest(&opt.TranscribeMultipartRequest, types.ContentTypeJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multipart request: %w", err)
 	}
