@@ -36,7 +36,7 @@ func TestTask_Close_Uninit(t *testing.T) {
 func TestTask_Init_NilModel(t *testing.T) {
 	assert := assert.New(t)
 	task := NewTask()
-	err := task.Init("", nil, 0)
+	err := task.Init("", nil, 0, nil)
 	assert.Error(err)
 }
 
@@ -47,7 +47,7 @@ func TestTask_Init_InvalidPath(t *testing.T) {
 		Id:   "test",
 		Path: "nonexistent.bin",
 	}
-	err := task.Init("/nonexistent", model, 0)
+	err := task.Init("/nonexistent", model, 0, nil)
 	assert.Error(err)
 }
 

@@ -444,28 +444,16 @@ func TestIntegration_HighConcurrencyLimit(t *testing.T) {
 		err := <-done
 		assert.NoError(err)
 	}
-
-	// Verify pool stats
-	stats := mgr.pool.stats()
-	t.Logf("Pool stats: available=%d, inUse=%d, max=%d",
-		stats["available"], stats["in_use"], stats["max"])
-
-	// With fewer tasks than max capacity, we should have contexts available
-	assert.GreaterOrEqual(stats["max"], numTasks, "Pool max should be >= number of tasks")
-	assert.Equal(0, stats["in_use"], "All contexts should be returned to pool")
-	assert.GreaterOrEqual(stats["available"], 1, "Should have available contexts after tasks complete")
 }
 
-func TestIntegration_LowConcurrencyLimit(t *testing.T) {
+func TestIntegration_ConcurrencyLimitEnforced(t *testing.T) {
 	if testModelsPath == "" {
 		t.Skip("No models path available")
 	}
 	assert := assert.New(t)
 
-	// Create a manager with low concurrency limit (2)
-	// and try to run more tasks (5) to test that pool enforces the limit
+	// Create a manager with a very low concurrency limit
 	const maxConcurrent = 2
-	const numTasks = 5
 
 	// First, close the global test manager to free up resources
 	if testManager != nil {
@@ -477,16 +465,12 @@ func TestIntegration_LowConcurrencyLimit(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(mgr)
 
-	// Ensure we clean up properly and reinitialize global manager
 	defer func() {
 		if mgr != nil {
 			mgr.Close()
-			mgr = nil
 		}
 		// Reinitialize the global manager for other tests
-		if err := setupTestEnvironment(); err != nil {
-			t.Logf("Warning: could not reinitialize test environment: %v", err)
-		}
+		setupTestEnvironment()
 	}()
 
 	models := mgr.ListModels()
@@ -495,93 +479,59 @@ func TestIntegration_LowConcurrencyLimit(t *testing.T) {
 	}
 	model := models[0]
 
-	// Use larger samples to ensure tasks take some time
-	samples := make([]float32, 16000*2) // 2 seconds
-	ctx := context.Background()
+	// Use a channel to hold tasks - we'll block them to ensure they overlap
+	blocker := make(chan struct{})
+	started := make(chan int, maxConcurrent+1)
+	results := make(chan error, maxConcurrent+1)
 
-	t.Logf("Running %d concurrent tasks with pool max=%d", numTasks, maxConcurrent)
-
-	done := make(chan error, numTasks)
-	completedCount := make(chan int, numTasks)
-	startTime := time.Now()
-
-	for i := 0; i < numTasks; i++ {
-		go func(taskNum int) {
-			// Retry logic for when pool is at capacity
-			for {
-				err := mgr.WithModel(model, func(task *Task) error {
-					t.Logf("Task %d starting (waited %.2fs)", taskNum, time.Since(startTime).Seconds())
-					err := task.Transcribe(ctx, 0, samples, nil)
-					t.Logf("Task %d completed", taskNum)
-					return err
-				})
-
-				// If pool is at capacity, wait and retry
-				if err != nil && err.Error() == "ErrChannelBlocked: pool at capacity, try again later" {
-					t.Logf("Task %d waiting for pool capacity...", taskNum)
-					time.Sleep(10 * time.Millisecond)
-					continue
-				}
-
-				// Send result and exit
-				done <- err
-				if err == nil {
-					completedCount <- 1
-				}
-				break
-			}
+	// Start maxConcurrent tasks that will block
+	for i := 0; i < maxConcurrent; i++ {
+		go func(id int) {
+			err := mgr.WithModel(model, func(task *Task) error {
+				started <- id
+				<-blocker // Block until we release
+				return nil
+			})
+			results <- err
 		}(i)
 	}
 
-	// Monitor concurrent execution
-	var completed int
-	var maxInUse int
-	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
-
-	monitorDone := make(chan bool)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				stats := mgr.pool.stats()
-				if stats["in_use"] > maxInUse {
-					maxInUse = stats["in_use"]
-				}
-				t.Logf("Pool status: in_use=%d, available=%d", stats["in_use"], stats["available"])
-			case <-monitorDone:
-				return
-			}
+	// Wait for all blocking tasks to start
+	for i := 0; i < maxConcurrent; i++ {
+		select {
+		case id := <-started:
+			t.Logf("Task %d acquired a slot", id)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Timeout waiting for tasks to start")
 		}
-	}()
-
-	// Wait for all tasks to complete
-	for i := 0; i < numTasks; i++ {
-		err := <-done
-		assert.NoError(err)
-		completed++
 	}
-	close(monitorDone)
 
-	totalTime := time.Since(startTime)
-	t.Logf("All %d tasks completed in %.2fs", numTasks, totalTime.Seconds())
-	t.Logf("Maximum in-use contexts observed: %d", maxInUse)
+	// Now try to start one more task - it should fail immediately with "pool at capacity"
+	err = mgr.WithModel(model, func(task *Task) error {
+		t.Error("This task should not have started - pool should be at capacity")
+		return nil
+	})
 
-	// Verify pool stats
-	stats := mgr.pool.stats()
-	t.Logf("Final pool stats: available=%d, inUse=%d, max=%d",
-		stats["available"], stats["in_use"], stats["max"])
+	// Should get a "pool at capacity" error
+	assert.Error(err)
+	assert.Contains(err.Error(), "pool at capacity")
+	t.Logf("Got expected error: %v", err)
 
-	// Pool should respect max concurrent limit
-	assert.Equal(maxConcurrent, stats["max"], "Pool max should match configured value")
-	assert.Equal(0, stats["in_use"], "All contexts should be returned to pool")
-	assert.Equal(numTasks, completed, "All tasks should complete")
+	// Release the blocking tasks
+	close(blocker)
 
-	// The maximum concurrent tasks should not exceed the limit
-	assert.LessOrEqual(maxInUse, maxConcurrent, "Should never exceed max concurrent limit")
+	// Wait for blocked tasks to complete
+	for i := 0; i < maxConcurrent; i++ {
+		err := <-results
+		assert.NoError(err)
+	}
 
-	// Should have created at most maxConcurrent contexts
-	assert.LessOrEqual(stats["available"], maxConcurrent, "Should not exceed max concurrent contexts")
+	// Now a new task should succeed
+	err = mgr.WithModel(model, func(task *Task) error {
+		t.Log("Task succeeded after pool freed up")
+		return nil
+	})
+	assert.NoError(err)
 }
 
 func TestIntegration_TranscribeReaderJFK(t *testing.T) {

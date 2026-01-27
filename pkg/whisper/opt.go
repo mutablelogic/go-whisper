@@ -1,24 +1,47 @@
 package whisper
 
 import (
+	"runtime"
+
+	// Packages
+	"go.opentelemetry.io/otel/trace"
+
 	// Namespace imports
 	. "github.com/djthorpe/go-errors"
-	"go.opentelemetry.io/otel/trace"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
 type opts struct {
-	MaxConcurrent int
-	logfn         LogFn
-	debug         bool
-	gpu           int
-	tracer        trace.Tracer
+	max    int // Max number of concurrent tasks
+	gpu    int // GPU index, -1 for no GPU
+	logfn  LogFn
+	debug  bool
+	tracer trace.Tracer
 }
 
 type Opt func(*opts) error
 type LogFn func(string)
+
+///////////////////////////////////////////////////////////////////////////////
+// LIFECYCLE
+
+func applyOpts(opt ...Opt) (opts, error) {
+	var o opts
+
+	// Set defaults
+	o.max = runtime.NumCPU()
+	o.gpu = 0
+
+	// Apply options
+	for _, fn := range opt {
+		if err := fn(&o); err != nil {
+			return o, err
+		}
+	}
+	return o, nil
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
@@ -29,7 +52,7 @@ func OptMaxConcurrent(v int) Opt {
 		if v < 1 {
 			return ErrBadParameter.With("max concurrent must be greater than zero")
 		}
-		o.MaxConcurrent = v
+		o.max = v
 		return nil
 	}
 }

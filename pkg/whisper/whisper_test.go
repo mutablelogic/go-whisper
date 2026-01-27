@@ -182,26 +182,3 @@ func TestManager_DeleteModelById_NotFound(t *testing.T) {
 
 	mgr.Close()
 }
-
-func TestContextPool_Stats(t *testing.T) {
-	assert := assert.New(t)
-
-	pool := newContextPool("/tmp", 5, 0)
-	assert.NotNil(pool)
-
-	stats := pool.stats()
-	assert.Equal(0, stats["available"])
-	assert.Equal(0, stats["in_use"])
-	assert.Equal(5, stats["max"])
-	assert.Equal(0, stats["gpu"])
-}
-
-func TestContextPool_NilCreation(t *testing.T) {
-	assert := assert.New(t)
-
-	pool := newContextPool("/tmp", 0, 0)
-	assert.Nil(pool)
-
-	pool = newContextPool("/tmp", -1, 0)
-	assert.Nil(pool)
-}

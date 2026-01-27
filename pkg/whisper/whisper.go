@@ -2,21 +2,18 @@ package whisper
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
+	"net/http"
 	"strings"
 	"sync"
 
 	// Packages
 	ffmpeg "github.com/mutablelogic/go-media/pkg/ffmpeg"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	store "github.com/mutablelogic/go-whisper/pkg/whisper/store"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -25,9 +22,8 @@ import (
 // contextPool is a simple pool of Task objects
 type contextPool struct {
 	sync.Mutex
+	*opts
 	path      string
-	gpu       int
-	max       int
 	available []*Task
 	inUse     int
 }
@@ -65,33 +61,27 @@ const (
 // the models directory and optional parameters. Returns an error if the
 // manager is already initialized.
 func New(path string, opt ...Opt) (*Manager, error) {
-	var o opts
 	globalManager.Lock()
 	defer globalManager.Unlock()
 
-	// Set options
-	o.MaxConcurrent = runtime.NumCPU()
-	for _, fn := range opt {
-		if err := fn(&o); err != nil {
-			return nil, err
-		}
-	}
-
-	// If already initialized, then return error
+	// If already initialized, then return error, else create the model store
 	if globalManager.store != nil {
-		return nil, ErrInternalAppError.With("whisper manager already initialized")
-	}
-
-	// Create a model store
-	if store, err := store.NewStore(path, extModel, defaultModelUrl); err != nil {
+		return nil, httpresponse.ErrInternalError.With("whisper manager already initialized")
+	} else if store, err := store.NewStore(path, extModel, defaultModelUrl); err != nil {
 		return nil, err
 	} else {
 		globalManager.store = store
 	}
 
+	// Set options
+	o, err := applyOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a context pool
-	if pool := newContextPool(path, o.MaxConcurrent, o.gpu); pool == nil {
-		return nil, ErrInternalAppError.With("unable to create context pool")
+	if pool := newContextPool(path, &o); pool == nil {
+		return nil, httpresponse.ErrInternalError.With("unable to create context pool")
 	} else {
 		globalManager.pool = pool
 	}
@@ -148,15 +138,14 @@ func (m *Manager) Close() error {
 }
 
 // newContextPool creates a simple context pool
-func newContextPool(path string, max int, gpu int) *contextPool {
-	if max <= 0 {
+func newContextPool(path string, opt *opts) *contextPool {
+	if opt.max <= 0 {
 		return nil
 	}
 	return &contextPool{
+		opts:      opt,
 		path:      path,
-		gpu:       gpu,
-		max:       max,
-		available: make([]*Task, 0, max),
+		available: make([]*Task, 0, opt.max),
 	}
 }
 
@@ -172,47 +161,6 @@ func (p *contextPool) close() error {
 	p.available = nil
 	p.inUse = 0
 	return result
-}
-
-// stats returns pool statistics for JSON marshaling
-func (p *contextPool) stats() map[string]int {
-	p.Lock()
-	defer p.Unlock()
-	return map[string]int{
-		"available": len(p.available),
-		"in_use":    p.inUse,
-		"max":       p.max,
-		"gpu":       p.gpu,
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// STRINGIFY
-
-func (m *Manager) MarshalJSON() ([]byte, error) {
-	m.RLock()
-	defer m.RUnlock()
-
-	poolStats := map[string]int{}
-	if m.pool != nil {
-		poolStats = m.pool.stats()
-	}
-
-	return json.Marshal(struct {
-		Store *store.Store   `json:"store"`
-		Pool  map[string]int `json:"pool"`
-	}{
-		Store: m.store,
-		Pool:  poolStats,
-	})
-}
-
-func (m *Manager) String() string {
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(data)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -239,7 +187,7 @@ func (m *Manager) DeleteModelById(id string) error {
 
 	model := m.store.ById(id)
 	if model == nil {
-		return ErrNotFound.Withf("%q", id)
+		return httpresponse.ErrNotFound.Withf("%q", id)
 	}
 
 	// Delete the model
@@ -262,9 +210,9 @@ func (m *Manager) DownloadModel(ctx context.Context, path string, fn func(curByt
 
 // WithModel gets a task for the specified model and executes the function.
 // The task is automatically returned to the pool when done.
-func (m *Manager) WithModel(model *schema.Model, fn func(task *Task) error) error {
+func (m *Manager) WithModel(model *schema.Model, fn func(task *Task) error, opts ...Opt) error {
 	if model == nil || fn == nil {
-		return ErrBadParameter
+		return httpresponse.ErrBadRequest.With("model and function must be non-nil")
 	}
 
 	m.RLock()
@@ -272,7 +220,7 @@ func (m *Manager) WithModel(model *schema.Model, fn func(task *Task) error) erro
 	m.RUnlock()
 
 	if pool == nil {
-		return ErrInternalAppError.With("pool not initialized")
+		return httpresponse.ErrInternalError.With("pool not initialized")
 	}
 
 	// Get a task from the pool
@@ -291,52 +239,57 @@ func (m *Manager) WithModel(model *schema.Model, fn func(task *Task) error) erro
 
 // get retrieves a task from the pool or creates a new one
 func (p *contextPool) get(model *schema.Model) (*Task, error) {
-	if model == nil {
-		return nil, ErrBadParameter
-	}
-
 	p.Lock()
 	defer p.Unlock()
 
-	// Try to reuse an existing task
-	for i, task := range p.available {
-		if task.Is(model) {
-			// Remove from available and return
-			p.available = append(p.available[:i], p.available[i+1:]...)
-			p.inUse++
-			return task, nil
+	// Check parameters
+	if model == nil {
+		return nil, httpresponse.ErrBadRequest.With("model is nil")
+	}
+
+	// Try to take a task from available pool (prefers matching model)
+	// No available task - need to create one
+	task, needsInit := p.takeTask(model)
+	if task == nil {
+		if p.inUse >= p.max {
+			return nil, httpresponse.Err(http.StatusServiceUnavailable).With("pool at capacity, try again later")
+		}
+		task = NewTask()
+		needsInit = true
+	}
+
+	// Initialize if needed
+	if needsInit {
+		if err := task.Init(p.path, model, p.gpu, p.tracer); err != nil {
+			return nil, err
 		}
 	}
 
-	// Check if we can create a new task
-	if p.inUse+len(p.available) >= p.max {
-		// Try to reuse any available task
-		if len(p.available) > 0 {
-			task := p.available[0]
-			p.available = p.available[1:]
-			p.inUse++
-
-			// Close old model and init new one
-			if err := task.Close(); err != nil {
-				p.inUse--
-				return nil, err
-			}
-			if err := task.Init(p.path, model, p.gpu); err != nil {
-				p.inUse--
-				return nil, err
-			}
-			return task, nil
-		}
-		return nil, ErrChannelBlocked.With("pool at capacity, try again later")
-	}
-
-	// Create new task
-	task := NewTask()
-	if err := task.Init(p.path, model, p.gpu); err != nil {
-		return nil, err
-	}
 	p.inUse++
 	return task, nil
+}
+
+// takeTask removes and returns a task from the available pool.
+// Prefers tasks that already have the model loaded (needsInit=false).
+// Returns nil if no tasks are available.
+func (p *contextPool) takeTask(model *schema.Model) (task *Task, needsInit bool) {
+	// First, look for a task with the same model already loaded
+	for i, t := range p.available {
+		if t.Is(model) {
+			p.available = append(p.available[:i], p.available[i+1:]...)
+			return t, false
+		}
+	}
+
+	// Take any available task (will need reinitialization)
+	if len(p.available) > 0 {
+		task = p.available[len(p.available)-1]
+		p.available = p.available[:len(p.available)-1]
+		task.Close()
+		return task, true
+	}
+
+	return nil, true
 }
 
 // put returns a task to the pool

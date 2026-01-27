@@ -13,13 +13,11 @@ import (
 	// Packages
 	otel "github.com/mutablelogic/go-client/pkg/otel"
 	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
 	attribute "go.opentelemetry.io/otel/attribute"
 	trace "go.opentelemetry.io/otel/trace"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -39,7 +37,7 @@ type Task struct {
 	// Collect the transcription
 	result *schema.Transcription
 
-	// OTEL tracer
+	// Tracer for OpenTelemetry
 	tracer trace.Tracer
 }
 
@@ -55,13 +53,13 @@ func NewTask() *Task {
 }
 
 // Init the task
-func (t *Task) Init(path string, model *schema.Model, gpu int) error {
+func (t *Task) Init(path string, model *schema.Model, gpu int, tracer trace.Tracer) error {
 	t.Lock()
 	defer t.Unlock()
 
 	// Check parameters
 	if model == nil {
-		return ErrBadParameter
+		return httpresponse.ErrBadRequest.With("model is nil")
 	}
 
 	// Get default parameters
@@ -80,12 +78,13 @@ func (t *Task) Init(path string, model *schema.Model, gpu int) error {
 	// Get a context
 	ctx := whisper.Whisper_init_from_file_with_params(filepath.Join(path, model.Path), params)
 	if ctx == nil {
-		return ErrInternalAppError.With("whisper_init")
+		return httpresponse.ErrInternalError.With("whisper_init")
 	}
 
 	// Set resources
 	t.whisper = ctx
 	t.model = model.Id
+	t.tracer = tracer
 
 	// Return success
 	return nil
@@ -260,7 +259,7 @@ func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentF
 // Set temperature for sampling
 func (t *Task) SetTemperature(v float64) error {
 	if v < 0 || v > 1 {
-		return ErrBadParameter.Withf("temperature must be between 0 and 1, got %f", v)
+		return httpresponse.ErrBadRequest.Withf("temperature must be between 0 and 1, got %f", v)
 	}
 	t.params.SetTemperature(float32(v))
 	return nil
@@ -282,7 +281,7 @@ func (t *Task) SetLanguage(v string) error {
 	}
 	id := whisper.Whisper_lang_id(v)
 	if id == -1 {
-		return ErrBadParameter.Withf("invalid language: %q", v)
+		return httpresponse.ErrBadRequest.Withf("invalid language: %q", v)
 	}
 	t.params.SetLanguage(v)
 	return nil
