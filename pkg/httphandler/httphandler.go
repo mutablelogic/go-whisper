@@ -8,9 +8,6 @@ import (
 	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	pkg "github.com/mutablelogic/go-whisper/pkg"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,13 +57,6 @@ func httperr(err error) error {
 		return err
 	}
 
-	// Map pkg errors to HTTP errors
-	switch {
-	case errors.Is(err, ErrNotFound):
-		return httpresponse.ErrNotFound.With(err.Error())
-	case errors.Is(err, ErrBadParameter):
-		return httpresponse.ErrBadRequest.With(err.Error())
-	default:
-		return httpresponse.ErrInternalError.With(err.Error())
-	}
+	// Map remaining errors to "Internal Error" HTTP errors
+	return httpresponse.ErrInternalError.With(err.Error())
 }

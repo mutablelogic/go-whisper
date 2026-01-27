@@ -3,6 +3,7 @@ package whisper
 import (
 	"testing"
 
+	// Packages
 	"github.com/stretchr/testify/assert"
 )
 

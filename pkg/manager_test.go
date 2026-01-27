@@ -477,3 +477,204 @@ func TestManager_Transcribe_ElevenLabs_Integration(t *testing.T) {
 		t.Logf("Transcription: %s\n", result.Text)
 	}
 }
+
+func TestManager_Transcribe_OpenAI_Diarization_Integration(t *testing.T) {
+	openaiKey := os.Getenv("OPENAI_API_KEY")
+	if openaiKey == "" {
+		t.Skip("OPENAI_API_KEY not set, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	manager, err := pkg.New(tmpDir, pkg.OptOpenAIKey(openaiKey))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manager.Close()
+
+	// Open sample audio file with potential multiple speakers
+	file, err := os.Open("../samples/en-office.mp3")
+	if err != nil {
+		t.Fatalf("failed to open sample file: %v", err)
+	}
+	defer file.Close()
+
+	// Transcribe with diarization using the diarization model
+	filename := "en-office.mp3"
+	diarize := true
+	req := &schema.TranscribeRequest{
+		TranslateRequest: schema.TranslateRequest{
+			Model:    "gpt-4o-transcribe-diarize",
+			Filename: &filename,
+		},
+		Diarize: &diarize,
+	}
+	result, err := manager.Transcribe(context.Background(), nil, file, req)
+	if err != nil {
+		t.Fatalf("diarization transcription failed: %v", err)
+	}
+
+	// Verify result
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.Text == "" {
+		t.Error("expected non-empty transcription text")
+	}
+	t.Logf("Transcription: %s\n", result.Text)
+
+	// Verify segments have speaker labels
+	if len(result.Segments) == 0 {
+		t.Error("expected segments in diarized response")
+	} else {
+		hasSpeaker := false
+		for _, seg := range result.Segments {
+			t.Logf("Segment %d [%v-%v] %s: %s", seg.Id, seg.Start, seg.End, seg.Speaker, seg.Text)
+			if seg.Speaker != "" {
+				hasSpeaker = true
+			}
+		}
+		if !hasSpeaker {
+			t.Error("expected at least one segment with speaker label")
+		}
+	}
+}
+
+func TestManager_Transcribe_OpenAI_Streaming_Integration(t *testing.T) {
+	openaiKey := os.Getenv("OPENAI_API_KEY")
+	if openaiKey == "" {
+		t.Skip("OPENAI_API_KEY not set, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	manager, err := pkg.New(tmpDir, pkg.OptOpenAIKey(openaiKey))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manager.Close()
+
+	// Open sample audio file
+	file, err := os.Open("../samples/jfk.wav")
+	if err != nil {
+		t.Fatalf("failed to open sample file: %v", err)
+	}
+	defer file.Close()
+
+	// Create a segment writer to collect streaming segments
+	var segments []*schema.Segment
+	writer := &testSegmentWriter{
+		segments: &segments,
+		t:        t,
+	}
+
+	// Transcribe with streaming
+	filename := "jfk.wav"
+	req := &schema.TranscribeRequest{
+		TranslateRequest: schema.TranslateRequest{
+			Model:    "gpt-4o-transcribe",
+			Filename: &filename,
+		},
+	}
+	result, err := manager.Transcribe(context.Background(), writer, file, req)
+	if err != nil {
+		t.Fatalf("streaming transcription failed: %v", err)
+	}
+
+	// Verify result (may be empty when streaming since response is not parsed)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	t.Logf("Final Transcription (may be empty with streaming): %s\n", result.Text)
+
+	// Verify we received streaming segments
+	if len(segments) == 0 {
+		t.Fatal("expected to receive streaming segments")
+	}
+	t.Logf("Received %d streaming segments", len(segments))
+
+	// Assemble text from streamed segments
+	var text string
+	for _, seg := range segments {
+		text += seg.Text
+	}
+	t.Logf("Assembled text from stream: %s", text)
+	if text == "" {
+		t.Error("expected non-empty text from streamed segments")
+	}
+}
+
+func TestManager_Transcribe_OpenAI_Diarization_Streaming_Integration(t *testing.T) {
+	openaiKey := os.Getenv("OPENAI_API_KEY")
+	if openaiKey == "" {
+		t.Skip("OPENAI_API_KEY not set, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	manager, err := pkg.New(tmpDir, pkg.OptOpenAIKey(openaiKey))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manager.Close()
+
+	// Open sample audio file with multiple speakers
+	file, err := os.Open("../samples/en-office.mp3")
+	if err != nil {
+		t.Fatalf("failed to open sample file: %v", err)
+	}
+	defer file.Close()
+
+	// Create a segment writer to collect streaming segments
+	var segments []*schema.Segment
+	writer := &testSegmentWriter{
+		segments: &segments,
+		t:        t,
+	}
+
+	// Transcribe with diarization and streaming
+	filename := "en-office.mp3"
+	diarize := true
+	req := &schema.TranscribeRequest{
+		TranslateRequest: schema.TranslateRequest{
+			Model:    "gpt-4o-transcribe-diarize",
+			Filename: &filename,
+		},
+		Diarize: &diarize,
+	}
+	result, err := manager.Transcribe(context.Background(), writer, file, req)
+	if err != nil {
+		t.Fatalf("diarization streaming transcription failed: %v", err)
+	}
+
+	// Verify result
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	t.Logf("Final Transcription: %s\n", result.Text)
+
+	// Verify we received streaming segments with speaker labels
+	if len(segments) == 0 {
+		t.Fatal("expected to receive streaming segments")
+	}
+	t.Logf("Received %d streaming segments", len(segments))
+
+	hasSpeaker := false
+	for _, seg := range segments {
+		t.Logf("Segment %d [%v-%v] %s: %s", seg.Id, seg.Start, seg.End, seg.Speaker, seg.Text)
+		if seg.Speaker != "" {
+			hasSpeaker = true
+		}
+	}
+	if !hasSpeaker {
+		t.Error("expected at least one segment with speaker label from streaming")
+	}
+}
+
+// testSegmentWriter implements schema.SegmentWriter for testing
+type testSegmentWriter struct {
+	segments *[]*schema.Segment
+	t        *testing.T
+}
+
+func (w *testSegmentWriter) Write(seg *schema.Segment) {
+	w.t.Logf("Streaming segment received: %s", seg.Text)
+	*w.segments = append(*w.segments, seg)
+}

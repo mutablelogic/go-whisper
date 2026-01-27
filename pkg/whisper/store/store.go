@@ -13,11 +13,9 @@ import (
 	"sync"
 
 	// Packages
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -47,7 +45,7 @@ func NewStore(path, ext, modelUrl string) (*Store, error) {
 	if info, err := os.Stat(path); err != nil {
 		return nil, err
 	} else if !info.IsDir() {
-		return nil, ErrBadParameter.With("not a directory:", path)
+		return nil, httpresponse.ErrBadRequest.With("not a directory:", path)
 	}
 
 	// Get a listing of the models
@@ -59,7 +57,7 @@ func NewStore(path, ext, modelUrl string) (*Store, error) {
 
 	// Create a client
 	if client := whisper.NewClient(modelUrl); client == nil {
-		return nil, ErrInternalAppError
+		return nil, httpresponse.ErrInternalError.With("failed to create whisper client")
 	} else {
 		store.client = client
 	}
@@ -149,7 +147,7 @@ func (s *Store) ByPath(path string) *schema.Model {
 func (s *Store) Delete(id string) error {
 	model := s.ById(id)
 	if model == nil {
-		return ErrNotFound.Withf("%q", id)
+		return httpresponse.ErrNotFound.Withf("%q", id)
 	}
 
 	// Lock the store
@@ -189,15 +187,15 @@ func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, tot
 
 	// abspath should be contained within the models directory
 	abspath := filepath.Clean(filepath.Join(s.path, path))
-	if !strings.HasPrefix(abspath, s.path) {
-		return nil, ErrBadParameter.With(path)
+	relpath, err := filepath.Rel(s.path, abspath)
+	if err != nil {
+		return nil, httpresponse.ErrBadRequest.With(path)
+	}
+	if relpath == ".." || strings.HasPrefix(relpath, ".."+string(filepath.Separator)) {
+		return nil, httpresponse.ErrBadRequest.With(path)
 	}
 
 	// Get the model by path relative to the models directory
-	relpath, err := filepath.Rel(s.path, abspath)
-	if err != nil {
-		return nil, err
-	}
 	model := s.ByPath(relpath)
 	if model != nil {
 		return model, nil
@@ -205,7 +203,7 @@ func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, tot
 
 	// File extension should match the store extension
 	if s.ext != "" && filepath.Ext(abspath) != s.ext {
-		return nil, ErrBadParameter.Withf("Bad file extension: %q", filepath.Base(abspath))
+		return nil, httpresponse.ErrBadRequest.Withf("Bad file extension: %q", filepath.Base(abspath))
 	}
 
 	// Create the destination directory if it's not empty
@@ -217,7 +215,7 @@ func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, tot
 	} else if err != nil {
 		return nil, err
 	} else if !info.IsDir() {
-		return nil, ErrBadParameter.With(path)
+		return nil, httpresponse.ErrBadRequest.With(path)
 	}
 
 	// Create the destination file
@@ -240,7 +238,7 @@ func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, tot
 	// Get a model by path
 	model = s.ByPath(relpath)
 	if model == nil {
-		return nil, ErrNotFound.With(relpath)
+		return nil, httpresponse.ErrNotFound.With(relpath)
 	}
 
 	// Return success
@@ -258,7 +256,7 @@ func toError(err error) error {
 	switch err := err.(type) {
 	case *whisper.HTTPError:
 		if err.Code == http.StatusNotFound {
-			return ErrNotFound.With(err.Message)
+			return httpresponse.ErrNotFound.With(err.Message)
 		}
 	}
 	return err

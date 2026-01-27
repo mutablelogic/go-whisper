@@ -42,6 +42,11 @@ func translateCreate(w http.ResponseWriter, r *http.Request, manager *pkg.Manage
 		return httpresponse.Error(w, httpresponse.ErrBadRequest.With("missing or invalid audio field"))
 	}
 
+	// Copy filename from multipart audio field if not explicitly set
+	if req.Audio.Path != "" && (req.Filename == nil || *req.Filename == "") {
+		req.Filename = &req.Audio.Path
+	}
+
 	// Create text stream if requested
 	var stream *httpresponse.TextStream
 	var mimetype string

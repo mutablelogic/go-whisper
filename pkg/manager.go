@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 
 	// Packages
@@ -11,6 +12,7 @@ import (
 	multipart "github.com/mutablelogic/go-client/pkg/multipart"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
 	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
 	openai "github.com/mutablelogic/go-whisper/pkg/openai"
@@ -18,9 +20,6 @@ import (
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	attribute "go.opentelemetry.io/otel/attribute"
 	trace "go.opentelemetry.io/otel/trace"
-
-	// Namespace imports
-	. "github.com/djthorpe/go-errors"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -123,6 +122,13 @@ func (m *Manager) ListModels(ctx context.Context) []*schema.Model {
 				OwnedBy: "openai",
 			})
 		}
+		for _, modelID := range openai.DiarizeModels {
+			models = append(models, &schema.Model{
+				Id:      modelID,
+				Object:  "model",
+				OwnedBy: "openai",
+			})
+		}
 	}
 
 	// Add ElevenLabs models
@@ -155,7 +161,7 @@ func (m *Manager) GetModel(ctx context.Context, modelID string) (*schema.Model, 
 			return model, nil
 		}
 	}
-	err = ErrNotFound.With(modelID)
+	err = httpresponse.ErrNotFound.With(modelID)
 	return nil, err
 }
 
@@ -212,19 +218,15 @@ func (m *Manager) Transcribe(ctx context.Context, w schema.SegmentWriter, r io.R
 	switch model.OwnedBy {
 	case "whisper":
 		var result *schema.Transcription
-		result, err = m.transcribeWhisper(ctx, r, req, model, func(seg *schema.Segment) {
-			if w != nil {
-				w.Write(seg)
-			}
-		})
+		result, err = m.transcribeWhisper(ctx, w, r, req, model)
 		return result, err
 	case "openai":
 		var result *schema.Transcription
-		result, err = m.transcribeOpenAI(ctx, r, req, model)
+		result, err = m.transcribeOpenAI(ctx, w, r, req, model)
 		return result, err
 	case "elevenlabs":
 		var result *schema.Transcription
-		result, err = m.transcribeElevenLabs(ctx, r, req, model)
+		result, err = m.transcribeElevenLabs(ctx, w, r, req, model)
 		return result, err
 	default:
 		err = errors.New("unsupported model owner: " + model.OwnedBy)
@@ -250,19 +252,15 @@ func (m *Manager) Translate(ctx context.Context, w schema.SegmentWriter, r io.Re
 	switch model.OwnedBy {
 	case "whisper":
 		var result *schema.Transcription
-		result, err = m.translateWhisper(ctx, r, req, model, func(seg *schema.Segment) {
-			if w != nil {
-				w.Write(seg)
-			}
-		})
+		result, err = m.translateWhisper(ctx, w, r, req, model)
 		return result, err
 	case "openai":
 		var result *schema.Transcription
-		result, err = m.translateOpenAI(ctx, r, req, model)
+		result, err = m.translateOpenAI(ctx, w, r, req, model)
 		return result, err
 	case "elevenlabs":
 		var result *schema.Transcription
-		result, err = m.translateElevenLabs(ctx, r, req, model)
+		result, err = m.translateElevenLabs(ctx, w, r, req, model)
 		return result, err
 	default:
 		err = errors.New("unsupported model owner: " + model.OwnedBy)
@@ -274,7 +272,7 @@ func (m *Manager) Translate(ctx context.Context, w schema.SegmentWriter, r io.Re
 // PRIVATE METHODS - WHISPER
 
 // transcribeWhisper transcribes using the local whisper model
-func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model, fn whisper.NewSegmentFunc) (*schema.Transcription, error) {
+func (m *Manager) transcribeWhisper(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Transcribe",
 		attribute.String("model.id", model.Id),
 	)
@@ -299,7 +297,11 @@ func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schem
 			task.SetDiarize(true)
 		}
 
-		// Transcribe from reader
+		// Transcribe from reader, passing segment callback if writer provided
+		var fn whisper.NewSegmentFunc
+		if w != nil {
+			fn = func(seg *schema.Segment) { w.Write(seg) }
+		}
 		if err := task.TranscribeReader(ctx, r, fn, m.segopts...); err != nil {
 			return err
 		}
@@ -312,7 +314,7 @@ func (m *Manager) transcribeWhisper(ctx context.Context, r io.Reader, req *schem
 }
 
 // translateWhisper translates using the local whisper model
-func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model, fn whisper.NewSegmentFunc) (*schema.Transcription, error) {
+func (m *Manager) translateWhisper(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
 	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "whisper.Translate",
 		attribute.String("model.id", model.Id),
 	)
@@ -334,11 +336,12 @@ func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema
 		if req.Prompt != nil {
 			task.SetPrompt(types.PtrString(req.Prompt))
 		}
-		// if req.Diarize != nil && types.PtrBool(req.Diarize) {
-		// 	task.SetDiarize(true)
-		// }
 
-		// Transcribe from reader
+		// Translate from reader, passing segment callback if writer provided
+		var fn whisper.NewSegmentFunc
+		if w != nil {
+			fn = func(seg *schema.Segment) { w.Write(seg) }
+		}
 		if err := task.TranscribeReader(ctx, r, fn, m.segopts...); err != nil {
 			return err
 		}
@@ -355,12 +358,7 @@ func (m *Manager) translateWhisper(ctx context.Context, r io.Reader, req *schema
 // PRIVATE METHODS - OPENAI TRANSCRIPTION
 
 // transcribeOpenAI transcribes using the OpenAI API
-func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
-	// Validate unsupported features
-	if types.PtrBool(req.Diarize) {
-		return nil, ErrBadParameter.With("diarize is not supported by OpenAI")
-	}
-
+func (m *Manager) transcribeOpenAI(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Determine filename with extension (default to .wav if not provided)
 	filename := "audio.wav"
 	if req.Filename != nil && *req.Filename != "" {
@@ -380,11 +378,55 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema
 			Temperature: req.Temperature,
 		},
 		Language: req.Language,
-		Stream:   nil,
+	}
+
+	// Add diarization option
+	if slices.Contains(openai.DiarizeModels, model.Id) {
+		req.Diarize = types.BoolPtr(true)
+	}
+	if types.PtrBool(req.Diarize) {
+		if !slices.Contains(openai.DiarizeModels, model.Id) {
+			return nil, httpresponse.ErrBadRequest.Withf("diarization is only supported with %q", openai.DiarizeModels)
+		} else {
+			openaiReq.Format = types.StringPtr(openai.FormatDiarizedJson)
+			openaiReq.ChunkingStrategy = &openai.ChunkingStrategy{Type: openai.ChunkingStrategyAuto}
+		}
+	}
+
+	// Build stream callback if a segment writer is provided
+	var segmentId int32
+	var streamfn func(schema.Event)
+	if w != nil {
+		// Use json format for streaming (verbose_json not supported with streaming)
+		if !types.PtrBool(req.Diarize) {
+			openaiReq.Format = types.StringPtr(openai.FormatJson)
+		}
+
+		streamfn = func(evt schema.Event) {
+			// Handle segment events for diarization or delta events for regular transcription
+			if evt.Type == schema.TranscribeStreamSegmentType {
+				// Diarized segment event - fields are at root level
+				w.Write(&schema.Segment{
+					Id:      segmentId,
+					Start:   evt.Start,
+					End:     evt.End,
+					Text:    evt.Text,
+					Speaker: evt.Speaker,
+				})
+				segmentId++
+			} else if evt.Type == schema.TranscribeStreamDeltaType && evt.Delta != "" {
+				// For non-diarized streaming, emit text deltas as partial segments
+				w.Write(&schema.Segment{
+					Id:   segmentId,
+					Text: evt.Delta,
+				})
+				segmentId++
+			}
+		}
 	}
 
 	// Call OpenAI API
-	resp, err := m.openai.Transcribe(ctx, openaiReq)
+	resp, err := m.openai.Transcribe(ctx, openaiReq, streamfn)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +436,7 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, r io.Reader, req *schema
 }
 
 // translateOpenAI translates using the OpenAI API
-func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
+func (m *Manager) translateOpenAI(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Determine filename with extension (default to .wav if not provided)
 	filename := "audio.wav"
 	if req.Filename != nil && *req.Filename != "" {
@@ -427,10 +469,10 @@ func (m *Manager) translateOpenAI(ctx context.Context, r io.Reader, req *schema.
 // PRIVATE METHODS - ELEVENLABS TRANSCRIPTION
 
 // transcribeElevenLabs transcribes using the ElevenLabs API
-func (m *Manager) transcribeElevenLabs(ctx context.Context, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
+func (m *Manager) transcribeElevenLabs(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranscribeRequest, model *schema.Model) (*schema.Transcription, error) {
 	// Validate unsupported features
 	if req.Prompt != nil && *req.Prompt != "" {
-		return nil, ErrBadParameter.With("prompt is not supported by ElevenLabs")
+		return nil, httpresponse.ErrBadRequest.With("prompt is not supported by ElevenLabs")
 	}
 
 	// Create ElevenLabs transcription request
@@ -457,9 +499,9 @@ func (m *Manager) transcribeElevenLabs(ctx context.Context, r io.Reader, req *sc
 }
 
 // translateElevenLabs translates using the ElevenLabs API
-func (m *Manager) translateElevenLabs(ctx context.Context, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
+func (m *Manager) translateElevenLabs(ctx context.Context, w schema.SegmentWriter, r io.Reader, req *schema.TranslateRequest, model *schema.Model) (*schema.Transcription, error) {
 	// ElevenLabs only supports transcription, not translation
-	return nil, ErrBadParameter.With("ElevenLabs does not support translation, only transcription")
+	return nil, httpresponse.ErrBadRequest.With("ElevenLabs does not support translation, only transcription")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -480,15 +522,21 @@ func transcriptionOpenAIToSchema(resp *openai.TranscriptionResponse) *schema.Tra
 
 	// Convert segments if present
 	if len(resp.Segment) > 0 {
-		for _, seg := range resp.Segment {
+		for i, seg := range resp.Segment {
 			if seg == nil {
 				continue
 			}
+			// Use IdAsInt32() for verbose_json, fallback to index for diarized_json (string IDs)
+			id := seg.IdAsInt32()
+			if id == 0 && i > 0 {
+				id = int32(i)
+			}
 			result.Segments = append(result.Segments, &schema.Segment{
-				Id:    seg.Id,
-				Start: seg.Start,
-				End:   seg.End,
-				Text:  seg.Text,
+				Id:      id,
+				Start:   seg.Start,
+				End:     seg.End,
+				Text:    seg.Text,
+				Speaker: seg.Speaker,
 			})
 		}
 	}

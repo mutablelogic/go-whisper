@@ -56,12 +56,15 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opts
 	if opt.segmentCallback != nil {
 		reqOpts = append(reqOpts, client.OptReqHeader("Accept", "text/event-stream"))
 		reqOpts = append(reqOpts, client.OptTextStreamCallback(func(evt client.TextStreamEvent) error {
-			var segment schema.Segment
-			if evt.Event == schema.TranscribeStreamDeltaType {
+			switch evt.Event {
+			case schema.TranscribeStreamDeltaType:
+				var segment schema.Segment
 				if err := evt.Json(&segment); err != nil {
 					return err
 				}
 				return opt.segmentCallback(&segment)
+			case schema.TranscribeStreamErrorType:
+				return fmt.Errorf("transcribe error: %s", evt.Data)
 			}
 			return nil
 		}))

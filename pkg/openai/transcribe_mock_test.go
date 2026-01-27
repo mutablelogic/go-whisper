@@ -43,7 +43,7 @@ func Test_Transcribe_TimestampGranularities_Mock(t *testing.T) {
 			File: multipart.File{Body: body, Path: "sample.wav"},
 		},
 		Timestamps: []string{"word", "segment"},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("Transcribe error: %v", err)
 	}

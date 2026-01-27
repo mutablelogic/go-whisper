@@ -40,7 +40,7 @@ func (c *Client) Translate(ctx context.Context, req TranslationRequest) (*Transc
 	}
 
 	// Create multipart request, and execute it
-	if payload, err := client.NewMultipartRequest(req, client.ContentTypeAny); err != nil {
+	if payload, err := client.NewStreamingMultipartRequest(req, client.ContentTypeAny); err != nil {
 		return nil, err
 	} else if err := c.DoWithContext(ctx, payload, &response, client.OptPath(TranslatePath)); err != nil {
 		return nil, err
