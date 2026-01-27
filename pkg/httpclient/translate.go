@@ -71,7 +71,7 @@ func (c *Client) Translate(ctx context.Context, model string, r io.Reader, opts 
 				}
 				return opt.segmentCallback(&segment)
 			case schema.TranscribeStreamErrorType:
-				return fmt.Errorf("transcribe error: %s", evt.Data)
+				return fmt.Errorf("translate error: %s", evt.Data)
 			}
 			return nil
 		}))

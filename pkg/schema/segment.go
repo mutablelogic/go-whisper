@@ -15,8 +15,8 @@ import (
 
 type Segment struct {
 	Id          int32     `json:"id"`
-	Start       Timestamp `json:"start,omitempty"`
-	End         Timestamp `json:"end,omitempty"`
+	Start       Timestamp `json:"start"`
+	End         Timestamp `json:"end"`
 	Text        string    `json:"text"`
 	Tokens      []string  `json:"tokens,omitempty"`       // TODO
 	Speaker     string    `json:"speaker,omitempty"`      // TODO
