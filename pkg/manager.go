@@ -153,7 +153,7 @@ func (m *Manager) GetModel(ctx context.Context, modelID string) (*schema.Model, 
 			return model, nil
 		}
 	}
-	err = ErrNotFound.With(modelID)
+	err = httpresponse.ErrNotFound.With(modelID)
 	return nil, err
 }
 
