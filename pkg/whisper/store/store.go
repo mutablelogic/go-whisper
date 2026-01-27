@@ -187,15 +187,15 @@ func (s *Store) Download(ctx context.Context, path string, fn func(curBytes, tot
 
 	// abspath should be contained within the models directory
 	abspath := filepath.Clean(filepath.Join(s.path, path))
-	if !strings.HasPrefix(abspath, s.path) {
+	relpath, err := filepath.Rel(s.path, abspath)
+	if err != nil {
+		return nil, httpresponse.ErrBadRequest.With(path)
+	}
+	if relpath == ".." || strings.HasPrefix(relpath, ".."+string(filepath.Separator)) {
 		return nil, httpresponse.ErrBadRequest.With(path)
 	}
 
 	// Get the model by path relative to the models directory
-	relpath, err := filepath.Rel(s.path, abspath)
-	if err != nil {
-		return nil, err
-	}
 	model := s.ByPath(relpath)
 	if model != nil {
 		return model, nil
