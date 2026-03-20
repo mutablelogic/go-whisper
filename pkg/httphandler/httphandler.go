@@ -24,6 +24,7 @@ func RegisterHandlers(router *http.ServeMux, prefix string, manager *pkg.Manager
 	RegisterModelHandlers(router, prefix, manager, middleware)
 	RegisterTranscribeHandlers(router, prefix, manager, middleware)
 	RegisterTranslateHandlers(router, prefix, manager, middleware)
+	RegisterStreamHandlers(router, prefix, manager, middleware)
 }
 
 ///////////////////////////////////////////////////////////////////////////////

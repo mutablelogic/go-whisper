@@ -168,6 +168,75 @@ Translates audio files to English text.
 
 **Response Formats:** Same as transcription (JSON, plain text, SRT, VTT)
 
+### Streaming Transcription (WebSocket)
+
+```http
+GET /api/whisper/stream
+```
+
+Upgrades the connection to a WebSocket for real-time streaming audio transcription. The client sends raw audio data and receives transcription segments as they are produced, using a sliding-window approach internally.
+
+**Protocol:**
+
+1. Connect via WebSocket (`ws://` or `wss://`)
+2. Send a JSON configuration message as the first text frame
+3. Receive a `stream.ready` event
+4. Send binary frames containing 16-bit signed little-endian PCM audio at 16 kHz mono
+5. Receive `stream.segment` events as transcription segments are produced
+6. Close the connection when done; remaining audio is flushed and a `stream.done` event is sent
+
+**Configuration Message (first text frame):**
+
+```json
+{
+  "model": "ggml-medium-q5_0",
+  "language": "en",
+  "temperature": 0.0,
+  "prompt": "Optional initial prompt",
+  "translate": false,
+  "step_ms": 3000,
+  "length_ms": 10000,
+  "keep_ms": 200,
+  "vad_threshold": 0.0
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `model` | string | (required) | Model ID to use (must be a local whisper model) |
+| `language` | string | `"auto"` | Language code |
+| `temperature` | number | `0.0` | Sampling temperature (0–1) |
+| `prompt` | string | | Initial prompt to guide transcription |
+| `translate` | boolean | `false` | Translate to English |
+| `step_ms` | integer | `3000` | How often to run inference on new audio (ms) |
+| `length_ms` | integer | `10000` | Maximum window size fed to the model (ms) |
+| `keep_ms` | integer | `200` | Overlap retained between consecutive windows (ms) |
+| `vad_threshold` | number | `0.0` | RMS energy threshold for voice activity detection (0 = disabled) |
+
+**Server Events (text frames):**
+
+```json
+{"type": "stream.ready"}
+```
+
+```json
+{"type": "stream.segment", "segment": {"id": 0, "start": 0.0, "end": 2.5, "text": "Hello world."}}
+```
+
+```json
+{"type": "stream.error", "error": "error message"}
+```
+
+```json
+{"type": "stream.done"}
+```
+
+**Notes:**
+
+- Only local whisper models are supported for streaming; cloud providers (OpenAI, ElevenLabs) are not available via this endpoint.
+- Audio must be 16 kHz, mono, 16-bit signed little-endian PCM. No resampling is performed server-side.
+- Each streaming session holds a model context for its duration. With a limited pool size (`--whisper.max-contexts`), long-running streams may prevent other requests from being served.
+
 ## Error Handling
 
 The API uses standard HTTP status codes and returns JSON error responses:

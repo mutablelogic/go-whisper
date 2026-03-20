@@ -208,6 +208,34 @@ func (m *Manager) DownloadModel(ctx context.Context, path string, fn func(curByt
 	return m.store.Download(ctx, path, fn)
 }
 
+// AcquireTask gets a task for the specified model from the pool without
+// scoping it to a callback. The caller MUST call the returned release
+// function when done (typically via defer) to return the task to the pool.
+// This is intended for long-lived sessions such as streaming transcription.
+func (m *Manager) AcquireTask(model *schema.Model) (*Task, func(), error) {
+	if model == nil {
+		return nil, nil, httpresponse.ErrBadRequest.With("model must be non-nil")
+	}
+
+	m.RLock()
+	pool := m.pool
+	m.RUnlock()
+
+	if pool == nil {
+		return nil, nil, httpresponse.ErrInternalError.With("pool not initialized")
+	}
+
+	task, err := pool.get(model)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	task.CopyParams()
+
+	release := func() { pool.put(task) }
+	return task, release, nil
+}
+
 // WithModel gets a task for the specified model and executes the function.
 // The task is automatically returned to the pool when done.
 func (m *Manager) WithModel(model *schema.Model, fn func(task *Task) error, opts ...Opt) error {

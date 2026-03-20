@@ -268,6 +268,56 @@ func (m *Manager) Translate(ctx context.Context, w schema.SegmentWriter, r io.Re
 	}
 }
 
+// NewStreamSession creates a new streaming transcription session for the
+// specified model. The caller MUST call the returned release function when
+// the session is finished to return the task to the pool.
+// Streaming is only supported for local whisper models.
+func (m *Manager) NewStreamSession(ctx context.Context, cfg *schema.StreamConfig) (*whisper.StreamSession, func(), error) {
+	ctx, endSpan := otel.StartSpan(m.tracer, ctx, "manager.NewStreamSession",
+		attribute.String("model", cfg.Model),
+	)
+	var err error
+	defer func() { endSpan(err) }()
+
+	// Resolve the model
+	model, err := m.GetModel(ctx, cfg.Model)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Streaming is only supported for local whisper models
+	if model.OwnedBy != "whisper" {
+		err = httpresponse.ErrBadRequest.With("streaming is only supported for local whisper models")
+		return nil, nil, err
+	}
+
+	// Acquire a long-lived task from the pool
+	task, release, err := m.whisper.AcquireTask(model)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Configure task parameters from the stream config
+	if cfg.Language != nil {
+		task.SetLanguage(*cfg.Language)
+	}
+	if cfg.Temperature != nil {
+		if err = task.SetTemperature(*cfg.Temperature); err != nil {
+			release()
+			return nil, nil, err
+		}
+	}
+	if cfg.Prompt != nil {
+		task.SetPrompt(*cfg.Prompt)
+	}
+	if cfg.Translate {
+		task.SetTranslate(true)
+	}
+
+	session := whisper.NewStreamSession(task, *cfg)
+	return session, release, nil
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS - WHISPER
 

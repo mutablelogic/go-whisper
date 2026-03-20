@@ -6,6 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/alecthomas/kong v1.13.0
+	github.com/coder/websocket v1.8.14
 	github.com/djthorpe/go-errors v1.0.3
 	github.com/go-audio/wav v1.1.0
 	github.com/mutablelogic/go-client v1.3.5
