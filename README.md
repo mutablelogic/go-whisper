@@ -12,6 +12,7 @@ A unified speech-to-text and translation service that provides a single API for 
 
 - **Command Line Interface**: Downloadable CLI for communicating with the server for  audio processing
 - **Download and Realtime Transcription** with JSON, SRT, VTT, and text output formats
+- **Streaming Audio Input**: Real-time transcription of audio streams via WebSocket
 - **HTTP API Server**: RESTful API for transcription and translation service
 - **Docker Support**: Pre-built GPU-enabled containers for easy deployment of the service
 - **GPU Support**: CUDA, Vulkan, and Metal (macOS) acceleration for local models
@@ -170,8 +171,8 @@ flowchart LR
         end
     end
 
-    CLI --> API
-    SDK --> API
+    CLI -->|REST / WebSocket| API
+    SDK -->|REST / WebSocket| API
     API --> Orch
     Orch --> WS
     WS --> Models
