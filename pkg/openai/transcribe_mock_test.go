@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -40,7 +41,7 @@ func Test_Transcribe_TimestampGranularities_Mock(t *testing.T) {
 	body := strings.NewReader("audio")
 	_, err = client.Transcribe(context.Background(), TranscriptionRequest{
 		TranslationRequest: TranslationRequest{
-			File: multipart.File{Body: body, Path: "sample.wav"},
+			File: multipart.File{Body: io.NopCloser(body), Path: "sample.wav"},
 		},
 		Timestamps: []string{"word", "segment"},
 	}, nil)

@@ -17,7 +17,7 @@ import (
 	// Packages
 	client "github.com/mutablelogic/go-client"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
-	"github.com/mutablelogic/go-media/pkg/segmenter"
+	"github.com/mutablelogic/go-media/segmenter"
 	httpserver "github.com/mutablelogic/go-server/pkg/httpserver"
 	pkg "github.com/mutablelogic/go-whisper/pkg"
 	httphandler "github.com/mutablelogic/go-whisper/pkg/httphandler"
@@ -80,7 +80,7 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	}
 
 	// Report models path
-	ctx.logger.With("models", modelsPath).Print(ctx.ctx, "using models directory")
+	ctx.logger.InfoContext(ctx.ctx, "using models directory", "models", modelsPath)
 
 	// Build options
 	managerOpts := []pkg.Opt{}
@@ -95,7 +95,7 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 
 		// Provide a log function so debug output is actually shown
 		managerOpts = append(managerOpts, pkg.WithWhisperOpt(whisper.OptLog(func(s string) {
-			ctx.logger.Print(ctx.ctx, s)
+			ctx.logger.DebugContext(ctx.ctx, s)
 		})))
 	}
 	if ctx.tracer != nil {
@@ -116,10 +116,10 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 		managerOpts = append(managerOpts, pkg.OptElevenLabsKey(cmd.ElevenLabsKey))
 	}
 	if cmd.Segmenter.MinSilenceSize > 0 {
-		managerOpts = append(managerOpts, pkg.WithSegmenterOpt(segmenter.WithSilenceSize(cmd.Segmenter.MinSilenceSize)))
+		managerOpts = append(managerOpts, pkg.WithSegmenterOpt(segmenter.WithMode(segmenter.ModeSilence, cmd.Segmenter.MinSilenceSize, 0)))
 	}
 	if cmd.Segmenter.MaxSegmentSize > 0 {
-		managerOpts = append(managerOpts, pkg.WithSegmenterOpt(segmenter.WithSegmentSize(cmd.Segmenter.MaxSegmentSize)))
+		managerOpts = append(managerOpts, pkg.WithSegmenterOpt(segmenter.WithSegments(cmd.Segmenter.MaxSegmentSize)))
 	}
 
 	// Create the whisper manager
@@ -129,13 +129,13 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	}
 	defer func() {
 		if err := manager.Close(); err != nil {
-			ctx.logger.Print(ctx.ctx, "error closing manager: ", err)
+			ctx.logger.ErrorContext(ctx.ctx, "error closing manager", "error", err)
 		}
 	}()
 
 	// Set logging middleware
 	middleware := httphandler.HTTPMiddlewareFuncs{
-		ctx.logger.HandleFunc,
+		logHandler(ctx.logger),
 	}
 
 	// If we have an OTEL tracer, add tracing middleware
@@ -156,7 +156,19 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	// Create a TLS config
 	var tlsconfig *tls.Config
 	if cmd.TLS.CertFile != "" || cmd.TLS.KeyFile != "" {
-		tlsconfig, err = httpserver.TLSConfig(cmd.TLS.ServerName, true, cmd.TLS.CertFile, cmd.TLS.KeyFile)
+		var cert, key []byte
+		if cmd.TLS.CertFile != "" {
+			if cert, err = os.ReadFile(cmd.TLS.CertFile); err != nil {
+				return err
+			}
+		}
+		if cmd.TLS.KeyFile != "" {
+			if key, err = os.ReadFile(cmd.TLS.KeyFile); err != nil {
+				return err
+			}
+		}
+		// Clients aren't asked for certificates, as the server serves anyone
+		tlsconfig, err = httpserver.TLSConfig(cmd.TLS.ServerName, false, cert, key)
 		if err != nil {
 			return err
 		}
@@ -168,10 +180,11 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 		httpopts = append(httpopts, httpserver.WithReadTimeout(ctx.HTTP.Timeout))
 		httpopts = append(httpopts, httpserver.WithWriteTimeout(ctx.HTTP.Timeout))
 	}
-	server, err := httpserver.New(ctx.HTTP.Addr, router, tlsconfig, httpopts...)
+	server, err := httpserver.New(ctx.HTTP.Addr, tlsconfig, httpopts...)
 	if err != nil {
 		return err
 	}
+	server.Router().Handle("/", router)
 
 	// We run the server
 	var wg sync.WaitGroup
@@ -179,11 +192,11 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 
 	// Output the version
 	if version.GitTag != "" {
-		ctx.logger.Printf(ctx.ctx, "gowhisper@%s", version.GitTag)
+		ctx.logger.InfoContext(ctx.ctx, "gowhisper@"+version.GitTag)
 	} else if version.GitHash != "" {
-		ctx.logger.Printf(ctx.ctx, "gowhisper@%s", version.GitHash[:8])
+		ctx.logger.InfoContext(ctx.ctx, "gowhisper@"+version.GitHash[:8])
 	} else {
-		ctx.logger.Printf(ctx.ctx, "gowhisper")
+		ctx.logger.InfoContext(ctx.ctx, "gowhisper")
 	}
 
 	// Run the HTTP server
@@ -192,7 +205,7 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 		defer wg.Done()
 
 		// Output listening information
-		ctx.logger.With("addr", ctx.HTTP.Addr, "prefix", ctx.HTTP.Prefix).Print(ctx.ctx, "http server starting")
+		ctx.logger.InfoContext(ctx.ctx, "http server starting", "addr", ctx.HTTP.Addr, "prefix", ctx.HTTP.Prefix)
 
 		// Run the server
 		if err := server.Run(ctx.ctx); err != nil {
@@ -208,9 +221,9 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 
 	// Terminated message
 	if result == nil {
-		ctx.logger.With("addr", ctx.HTTP.Addr, "prefix", ctx.HTTP.Prefix).Print(ctx.ctx, "terminated gracefully")
+		ctx.logger.InfoContext(ctx.ctx, "terminated gracefully", "addr", ctx.HTTP.Addr, "prefix", ctx.HTTP.Prefix)
 	} else {
-		ctx.logger.With("addr", ctx.HTTP.Addr, "prefix", ctx.HTTP.Prefix).Print(ctx.ctx, result)
+		ctx.logger.ErrorContext(ctx.ctx, "terminated with an error", "addr", ctx.HTTP.Addr, "prefix", ctx.HTTP.Prefix, "error", result)
 	}
 
 	// Return any error

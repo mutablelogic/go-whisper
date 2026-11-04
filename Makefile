@@ -96,12 +96,13 @@ libwhisper: mkdir submodule cmake-dep
 	@${CMAKE} --build ${BUILD_DIR} ${BUILD_JOBS} --config Release
 	@${CMAKE} --install ${BUILD_DIR} --prefix $(shell realpath ${PREFIX})
 
-# make ffmpeg libraries and install at ${PREFIX}
+# make ffmpeg libraries, and libfvad, which the segmenter detects speech
+# with, and install at ${PREFIX}
 libffmpeg: mkdir submodule
-	@echo "Making ffmpeg libraries => ${PREFIX}"
+	@echo "Making ffmpeg and libfvad libraries => ${PREFIX}"
 	@mkdir -p ${BUILD_DIR}
 	@mkdir -p ${PREFIX}
-	@BUILD_DIR=$(shell realpath ${BUILD_DIR}) PREFIX=$(shell realpath ${PREFIX}) make -C third_party/go-media ffmpeg
+	@BUILD_DIR=$(shell realpath ${BUILD_DIR}) PREFIX=$(shell realpath ${PREFIX}) make -C third_party/go-media ffmpeg libfvad
 
 #####################################################################
 # TEST

@@ -9,6 +9,7 @@ import (
 
 	// Packages
 	"github.com/mutablelogic/go-client"
+	types "github.com/mutablelogic/go-server/pkg/types"
 )
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +35,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 	}
 
 	// Create multipart request, and execute it
-	if payload, err := client.NewStreamingMultipartRequest(req, client.ContentTypeAny); err != nil {
+	if payload, err := client.NewStreamingMultipartRequest(req, types.ContentTypeAny); err != nil {
 		return nil, err
 	} else if err := c.DoWithContext(ctx, payload, &response, client.OptPath(TranscribePath)); err != nil {
 		return nil, err
@@ -51,7 +52,7 @@ func (c *Client) GetTranscript(ctx context.Context, transcriptionID string) (*Tr
 	}
 
 	var response TranscribeResponse
-	if err := c.DoWithContext(ctx, client.MethodGet, &response, client.OptPath(TranscriptPath, transcriptionID)); err != nil {
+	if err := c.DoWithContext(ctx, client.MethodGet, &response, client.OptPath(TranscribePath, "transcripts", transcriptionID)); err != nil {
 		return nil, err
 	}
 	return &response, nil
@@ -63,5 +64,5 @@ func (c *Client) DeleteTranscript(ctx context.Context, transcriptionID string) e
 		return fmt.Errorf("transcription_id is required")
 	}
 
-	return c.DoWithContext(ctx, client.MethodDelete, nil, client.OptPath(TranscriptPath, transcriptionID))
+	return c.DoWithContext(ctx, client.MethodDelete, nil, client.OptPath(TranscribePath, "transcripts", transcriptionID))
 }

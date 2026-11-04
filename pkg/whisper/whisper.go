@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	// Packages
-	ffmpeg "github.com/mutablelogic/go-media/pkg/ffmpeg"
+	ff "github.com/mutablelogic/go-media/sys/ffmpeg80"
 	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	store "github.com/mutablelogic/go-whisper/pkg/whisper/store"
@@ -100,8 +100,13 @@ func New(path string, opt ...Opt) (*Manager, error) {
 		}
 		logfn(fmt.Sprintf("[%s] %s", level, strings.TrimSpace(text)))
 	})
-	ffmpeg.SetLogging(o.debug, func(text string) {
-		logfn(text)
+	if o.debug {
+		ff.AVUtil_log_set_level(ff.AV_LOG_INFO)
+	} else {
+		ff.AVUtil_log_set_level(ff.AV_LOG_ERROR)
+	}
+	ff.AVUtil_log_set_callback(func(level ff.AVLog, message string, _ any) {
+		logfn(fmt.Sprintf("[%v] %v", level, strings.TrimSpace(message)))
 	})
 
 	// Return success

@@ -5,7 +5,7 @@ import (
 
 	// Packages
 	goclient "github.com/mutablelogic/go-client"
-	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	segmenter "github.com/mutablelogic/go-media/segmenter"
 	whisper "github.com/mutablelogic/go-whisper/pkg/whisper"
 	trace "go.opentelemetry.io/otel/trace"
 )

@@ -11,7 +11,7 @@ import (
 	goclient "github.com/mutablelogic/go-client"
 	multipart "github.com/mutablelogic/go-client/pkg/multipart"
 	otel "github.com/mutablelogic/go-client/pkg/otel"
-	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	segmenter "github.com/mutablelogic/go-media/segmenter"
 	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	types "github.com/mutablelogic/go-server/pkg/types"
 	elevenlabs "github.com/mutablelogic/go-whisper/pkg/elevenlabs"
@@ -370,7 +370,7 @@ func (m *Manager) transcribeOpenAI(ctx context.Context, w schema.SegmentWriter, 
 		TranslationRequest: openai.TranslationRequest{
 			Model: model.Id,
 			File: multipart.File{
-				Body: r,
+				Body: io.NopCloser(r),
 				Path: filename,
 			},
 			Prompt:      req.Prompt,
@@ -447,7 +447,7 @@ func (m *Manager) translateOpenAI(ctx context.Context, w schema.SegmentWriter, r
 	openaiReq := openai.TranslationRequest{
 		Model: model.Id,
 		File: multipart.File{
-			Body: r,
+			Body: io.NopCloser(r),
 			Path: filename,
 		},
 		Prompt:      req.Prompt,
@@ -479,7 +479,7 @@ func (m *Manager) transcribeElevenLabs(ctx context.Context, w schema.SegmentWrit
 	elevenLabsReq := elevenlabs.TranscribeRequest{
 		Model: model.Id,
 		File: multipart.File{
-			Body: r,
+			Body: io.NopCloser(r),
 			Path: "audio",
 		},
 		Language:    req.Language,

@@ -9,6 +9,7 @@ import (
 
 	// Packages
 	"github.com/mutablelogic/go-client"
+	types "github.com/mutablelogic/go-server/pkg/types"
 )
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -40,9 +41,9 @@ func (c *Client) Translate(ctx context.Context, req TranslationRequest) (*Transc
 	}
 
 	// Create multipart request, and execute it
-	if payload, err := client.NewStreamingMultipartRequest(req, client.ContentTypeAny); err != nil {
+	if payload, err := client.NewStreamingMultipartRequest(req, types.ContentTypeAny); err != nil {
 		return nil, err
-	} else if err := c.DoWithContext(ctx, payload, &response, client.OptPath(TranslatePath)); err != nil {
+	} else if err := c.DoWithContext(ctx, payload, &response, client.OptPath("audio", "translations")); err != nil {
 		return nil, err
 	}
 

@@ -12,7 +12,7 @@ import (
 
 	// Packages
 	otel "github.com/mutablelogic/go-client/pkg/otel"
-	segmenter "github.com/mutablelogic/go-media/pkg/segmenter"
+	segmenter "github.com/mutablelogic/go-media/segmenter"
 	httpresponse "github.com/mutablelogic/go-server/pkg/httpresponse"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 	whisper "github.com/mutablelogic/go-whisper/sys/whisper"
@@ -225,26 +225,26 @@ func (t *Task) Transcribe(ctx context.Context, ts time.Duration, samples []float
 //   - ctx: Context for cancellation
 //   - r: Audio source (any format supported by FFmpeg)
 //   - fn: Optional callback for each segment during transcription
-//   - segmenterOpts: Optional segmenter options (e.g., segmenter.WithSegmentSize(30*time.Second))
+//   - segmenterOpts: Optional segmenter options (e.g., segmenter.WithSegments(30*time.Second))
 //
 // Returns the final transcription result or an error.
 func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentFunc, segmenterOpts ...segmenter.Opt) error {
 	// Create segmenter with Whisper's sample rate (16kHz)
-	seg, err := segmenter.NewFromReader(r, whisper.SampleRate, segmenterOpts...)
+	seg, err := segmenter.NewReader(r, whisper.SampleRate, segmenterOpts...)
 	if err != nil {
 		return err
 	}
 	defer seg.Close()
 
-	// Process each audio segment - and report in a span
-	err = seg.DecodeFloat32(ctx, func(start time.Duration, samples []float32) (result error) {
-		end := start + time.Duration(float64(len(samples))*float64(time.Second)/float64(whisper.SampleRate))
+	// Process each audio segment - and report in a span. The samples are only
+	// valid during the callback, which transcribes them before returning
+	err = seg.Decode(ctx, func(s *segmenter.Segment) (result error) {
 		childctx, endfunc := otel.StartSpan(t.tracer, ctx, "whisper.TranscribeReader.Segment",
-			attribute.String("start", start.String()),
-			attribute.String("end", end.String()),
+			attribute.String("start", s.Start.String()),
+			attribute.String("end", (s.Start+s.Duration).String()),
 		)
 		defer func() { endfunc(result) }()
-		return t.Transcribe(childctx, start, samples, fn)
+		return t.Transcribe(childctx, s.Start, s.Samples, fn)
 	})
 
 	// Return success if io.EOF
