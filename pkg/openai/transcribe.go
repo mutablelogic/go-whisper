@@ -10,6 +10,7 @@ import (
 
 	// Packages
 	client "github.com/mutablelogic/go-client"
+	types "github.com/mutablelogic/go-server/pkg/types"
 	schema "github.com/mutablelogic/go-whisper/pkg/schema"
 )
 
@@ -39,7 +40,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest, strea
 
 	// Set request options
 	opts := []client.RequestOpt{
-		client.OptPath(TranscribePath),
+		client.OptPath("audio", "transcriptions"),
 	}
 
 	// Build the actual request to send - wrap with stream field if streaming
@@ -71,7 +72,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscriptionRequest, strea
 	}
 
 	// Create multipart request, and execute it
-	if payload, err := client.NewStreamingMultipartRequest(actualReq, client.ContentTypeAny); err != nil {
+	if payload, err := client.NewStreamingMultipartRequest(actualReq, types.ContentTypeAny); err != nil {
 		return nil, err
 	} else if err := c.DoWithContext(ctx, payload, &response, opts...); err != nil {
 		return nil, err

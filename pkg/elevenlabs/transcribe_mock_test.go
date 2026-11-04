@@ -3,6 +3,7 @@ package elevenlabs
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -146,7 +147,7 @@ func Test_Transcribe_RequestFields_Mock(t *testing.T) {
 
 	_, err = client.Transcribe(context.Background(), TranscribeRequest{
 		Model:          model,
-		File:           multipart.File{Body: body, Path: "sample.wav"},
+		File:           multipart.File{Body: io.NopCloser(body), Path: "sample.wav"},
 		Language:       &lang,
 		TagAudioEvents: &tags,
 		NumSpeakers:    uint64Ptr(3),

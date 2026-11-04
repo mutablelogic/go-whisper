@@ -34,7 +34,11 @@ func (c *Client) Transcribe(ctx context.Context, model string, r io.Reader, opts
 
 	// Set model and audio
 	opt.Model = model
-	opt.Audio.Body = r
+	if rc, ok := r.(io.ReadCloser); ok {
+		opt.Audio.Body = rc
+	} else {
+		opt.Audio.Body = io.NopCloser(r)
+	}
 	if opt.Audio.Path == "" {
 		// Infer filename from *os.File if not already set
 		if f, ok := r.(*os.File); ok && f != nil {
