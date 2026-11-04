@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	// Packages
@@ -103,8 +104,9 @@ func run(ctx *kong.Context, globals *Globals) int {
 		globals.logger = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	}
 
-	// Create the context and cancel function
-	globals.ctx, globals.cancel = signal.NotifyContext(parent, os.Interrupt)
+	// Create the context, which is cancelled on an interrupt, or when the
+	// process is asked to terminate, such as when its container is stopped
+	globals.ctx, globals.cancel = signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
 	defer globals.cancel()
 
 	// Open Telemetry

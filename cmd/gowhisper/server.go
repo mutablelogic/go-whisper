@@ -136,6 +136,7 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 	// Set logging middleware
 	middleware := httphandler.HTTPMiddlewareFuncs{
 		logHandler(ctx.logger),
+		shutdownHandler(ctx.ctx),
 	}
 
 	// If we have an OTEL tracer, add tracing middleware
