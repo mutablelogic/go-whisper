@@ -682,3 +682,36 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 		t.Logf("Transcription properly cancelled: %v", err)
 	}
 }
+
+// The duration of a transcription is of all the samples transcribed by a
+// task, such as in segments, and starts again once its parameters are reset
+// for re-use
+func TestIntegration_TranscribeDuration(t *testing.T) {
+	mgr := skipIfNoManager(t)
+	assert := assert.New(t)
+
+	model := mgr.ListModels()[0]
+	ctx := context.Background()
+	err := mgr.WithModel(model, func(task *Task) error {
+		task.SetLanguage("en")
+
+		// Two segments of different lengths
+		if err := task.Transcribe(ctx, 0, make([]float32, 2*16000), nil); err != nil {
+			return err
+		}
+		if err := task.Transcribe(ctx, 2*time.Second, make([]float32, 3*16000), nil); err != nil {
+			return err
+		}
+		assert.Equal(5*time.Second, time.Duration(task.Result().Duration))
+
+		// Reset for re-use
+		task.CopyParams()
+		task.SetLanguage("en")
+		if err := task.Transcribe(ctx, 0, make([]float32, 16000), nil); err != nil {
+			return err
+		}
+		assert.Equal(time.Second, time.Duration(task.Result().Duration))
+		return nil
+	})
+	assert.NoError(err)
+}
