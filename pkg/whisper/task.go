@@ -34,8 +34,10 @@ type Task struct {
 	// Parameters for the next transcription
 	params whisper.FullParams
 
-	// Collect the transcription
-	result *schema.Transcription
+	// Collect the transcription, and how much of its audio is in each
+	// language, as audio transcribed in segments may change language
+	result    *schema.Transcription
+	languages map[string]time.Duration
 
 	// Tracer for OpenTelemetry
 	tracer trace.Tracer
@@ -152,6 +154,7 @@ func (t *Task) CopyParams() {
 	t.params = whisper.DefaultFullParams(whisper.SAMPLING_BEAM_SEARCH)
 	t.params.SetLanguage("auto")
 	t.result = new(schema.Transcription)
+	t.languages = nil
 }
 
 // Model is multilingual and can translate
@@ -176,7 +179,11 @@ func (t *Task) Transcribe(ctx context.Context, ts time.Duration, samples []float
 	// Set the new segment function
 	if fn != nil {
 		t.params.SetSegmentCallback(t.whisper, func(new_segments int) {
-			t.result.Language = whisper.Whisper_lang_str_full(t.whisper.DefaultLangId())
+			// The language is known as soon as segments are, and is then
+			// the language of the most audio, when it's transcribed
+			if t.result.Language == "" {
+				t.result.Language = whisper.Whisper_lang_str_full(t.whisper.DefaultLangId())
+			}
 			num_segments := t.whisper.NumSegments()
 			offset := len(t.result.Segments)
 			for i := num_segments - new_segments; i < num_segments; i++ {
@@ -200,8 +207,11 @@ func (t *Task) Transcribe(ctx context.Context, ts time.Duration, samples []float
 	} else {
 		t.result.Task = "transcribe"
 	}
-	t.result.Language = whisper.Whisper_lang_str_full(t.whisper.DefaultLangId())
-	t.result.Duration = schema.Timestamp(float64(len(samples)) * float64(time.Second) / float64(whisper.SampleRate))
+	// The duration is of all the samples transcribed, and the language is
+	// the one most of them are in, rather than the last segment's
+	duration := time.Duration(float64(len(samples)) * float64(time.Second) / float64(whisper.SampleRate))
+	t.result.Duration += schema.Timestamp(duration)
+	t.addLanguage(whisper.Whisper_lang_str_full(t.whisper.DefaultLangId()), duration)
 
 	// Remove the callbacks
 	t.params.SetAbortCallback(t.whisper, nil)
@@ -254,6 +264,22 @@ func (t *Task) TranscribeReader(ctx context.Context, r io.Reader, fn NewSegmentF
 
 	// Return any errors
 	return err
+}
+
+// addLanguage adds the duration of audio in the language, and sets the
+// language of the transcription to the one with the most audio, which stays
+// the same when another has as much
+func (t *Task) addLanguage(language string, duration time.Duration) {
+	if language == "" {
+		return
+	}
+	if t.languages == nil {
+		t.languages = make(map[string]time.Duration)
+	}
+	t.languages[language] += duration
+	if t.result.Language == "" || t.languages[language] > t.languages[t.result.Language] {
+		t.result.Language = language
+	}
 }
 
 // Set temperature for sampling

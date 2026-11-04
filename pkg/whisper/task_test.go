@@ -273,3 +273,26 @@ func TestTask_Transcribe_CanceledContext(t *testing.T) {
 	err := task.Transcribe(ctx, 0, samples, nil)
 	assert.Error(err) // Should error due to canceled context or nil whisper
 }
+
+// The language of a transcription is the one most of its audio is in, rather
+// than its last segment's, which stays the same when another has as much
+func TestTask_AddLanguage(t *testing.T) {
+	task := &Task{result: &schema.Transcription{}}
+	task.addLanguage("german", 5*time.Minute)
+	task.addLanguage("english", 2*time.Minute)
+	if task.result.Language != "german" {
+		t.Errorf("language = %q, want german", task.result.Language)
+	}
+	task.addLanguage("english", 3*time.Minute)
+	if task.result.Language != "german" {
+		t.Errorf("language with as much audio in another = %q, want german", task.result.Language)
+	}
+	task.addLanguage("english", time.Second)
+	if task.result.Language != "english" {
+		t.Errorf("language = %q, want english", task.result.Language)
+	}
+	task.addLanguage("", time.Hour)
+	if task.result.Language != "english" {
+		t.Errorf("language after an unknown one = %q, want english", task.result.Language)
+	}
+}
