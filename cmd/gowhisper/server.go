@@ -167,7 +167,8 @@ func (cmd *RunServer) Run(ctx *Globals) error {
 				return err
 			}
 		}
-		tlsconfig, err = httpserver.TLSConfig(cmd.TLS.ServerName, true, cert, key)
+		// Clients aren't asked for certificates, as the server serves anyone
+		tlsconfig, err = httpserver.TLSConfig(cmd.TLS.ServerName, false, cert, key)
 		if err != nil {
 			return err
 		}

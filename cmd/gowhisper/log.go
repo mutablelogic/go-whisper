@@ -11,8 +11,9 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
-// statusWriter records the status of a response, and unwraps to the
-// response writer it wraps, so streamed responses can still be flushed
+// statusWriter records the status of a response, and flushes, and unwraps
+// to, the response writer it wraps, so streamed responses, which check for
+// an http.Flusher, are still flushed as they're written
 type statusWriter struct {
 	http.ResponseWriter
 	status int
@@ -33,6 +34,15 @@ func (w *statusWriter) Write(data []byte) (int, error) {
 		w.status = http.StatusOK
 	}
 	return w.ResponseWriter.Write(data)
+}
+
+func (w *statusWriter) Flush() {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 func (w *statusWriter) Unwrap() http.ResponseWriter {
