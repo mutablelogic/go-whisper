@@ -163,6 +163,7 @@ Translates audio files to English text.
 - `stream` (boolean, optional): Enable streaming response
 - `diarize` (boolean, optional): Identify and separate speakers
 - `filename` (string, optional): Original filename with extension
+- `language` (string, optional): Language the audio is in, such as `de`, which it's translated from, or detected when it's omitted. Whisper models only; OpenAI's translations detect it.
 
 **Note:** Translation always outputs English text regardless of input language.
 

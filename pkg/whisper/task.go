@@ -297,9 +297,9 @@ func (t *Task) SetPrompt(prompt string) error {
 	return nil
 }
 
-// Set the language. For transcription, this is the language of the
-// audio samples. For translation, this is the language to translate
-// to. If you set this to "auto" then the language will be detected
+// Set the language of the audio samples, for transcription, and for
+// translation, which is from it, into English. If you set this to "auto"
+// then the language will be detected
 func (t *Task) SetLanguage(v string) error {
 	if v == "" || v == "auto" {
 		t.params.SetLanguage("auto")

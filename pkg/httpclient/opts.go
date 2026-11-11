@@ -39,6 +39,18 @@ func applyOpts(opts ...Opt) (*opt, error) {
 ///////////////////////////////////////////////////////////////////////////////
 // OPTIONS - COMMON
 
+// WithLanguage sets the language of the audio (two-letter code), for
+// transcription, and for translation, which is from it, into English. Use
+// "auto" or empty string for automatic language detection.
+func WithLanguage(language string) Opt {
+	return func(o *opt) error {
+		if language != "" {
+			o.Language = &language
+		}
+		return nil
+	}
+}
+
 // WithPrompt sets an optional text prompt to guide the model's style.
 func WithPrompt(prompt string) Opt {
 	return func(o *opt) error {
@@ -93,17 +105,6 @@ func WithFormat(format FormatType) Opt {
 
 ///////////////////////////////////////////////////////////////////////////////
 // OPTIONS - TRANSCRIBE ONLY
-
-// WithLanguage sets the language of the audio (two-letter code) for transcription.
-// Use "auto" or empty string for automatic language detection.
-func WithLanguage(language string) Opt {
-	return func(o *opt) error {
-		if language != "" {
-			o.Language = &language
-		}
-		return nil
-	}
-}
 
 // WithSegmentCallback sets a callback function to receive segments as they are processed.
 // This enables streaming support for transcription/translation.
