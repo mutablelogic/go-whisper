@@ -327,7 +327,15 @@ func (m *Manager) translateWhisper(ctx context.Context, w schema.SegmentWriter, 
 		// Set translate flag
 		task.SetTranslate(true)
 
-		// Set translation parameters from request
+		// Set translation parameters from request, such as the language the
+		// audio is in, which is translated from, into English, so it isn't
+		// detected, as that goes wrong when the audio starts with music, or
+		// another language
+		if req.Language != nil {
+			if err := task.SetLanguage(types.PtrString(req.Language)); err != nil {
+				return err
+			}
+		}
 		if req.Temperature != nil {
 			if err := task.SetTemperature(types.PtrFloat64(req.Temperature)); err != nil {
 				return err
@@ -443,7 +451,8 @@ func (m *Manager) translateOpenAI(ctx context.Context, w schema.SegmentWriter, r
 		filename = *req.Filename
 	}
 
-	// Create OpenAI translation request
+	// Create OpenAI translation request, without the language the audio is
+	// in, as OpenAI's translations detect it
 	openaiReq := openai.TranslationRequest{
 		Model: model.Id,
 		File: multipart.File{

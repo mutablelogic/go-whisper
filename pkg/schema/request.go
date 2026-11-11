@@ -8,19 +8,20 @@ import (
 //////////////////////////////////////////////////////////////////////////////
 // TYPES
 
-// TranslateRequest represents a request to translate audio to English
+// TranslateRequest represents a request to translate audio to English, from
+// the language it's in, when it's known, or else the language is detected
 type TranslateRequest struct {
 	Model       string   `json:"model" help:"Model ID to use for translation"`
 	Prompt      *string  `json:"prompt,omitempty" help:"Text to guide the model's style"`
 	Temperature *float64 `json:"temperature,omitempty" help:"Sampling temperature (0-1)"`
 	Filename    *string  `json:"filename,omitempty" help:"Optional filename with extension for the audio file"`
+	Language    *string  `json:"language,omitempty" help:"Language the audio is in (two-letter code), which is detected when it isn't given. A translation is from it, into English."`
 }
 
 // TranscribeRequest represents a request to transcribe audio
 type TranscribeRequest struct {
 	TranslateRequest
-	Diarize  *bool   `json:"diarize,omitempty" help:"Identify and separate speakers"`
-	Language *string `json:"language,omitempty" help:"Language of the audio (two-letter code)"`
+	Diarize *bool `json:"diarize,omitempty" help:"Identify and separate speakers"`
 }
 
 // DownloadModelRequest represents a request to download a model
