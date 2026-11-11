@@ -22,7 +22,7 @@ type TranslateCommand struct {
 	File        string   `arg:"" name:"file" help:"Audio file to translate"`
 	Prompt      *string  `name:"prompt" help:"Initial prompt to guide translation"`
 	Temperature *float64 `name:"temperature" help:"Temperature (0.0-1.0)"`
-	Language    *string  `name:"language" help:"Language code of the audio, which it's translated from (e.g., 'de', 'es', 'fr'), or detected when it isn't given"`
+	Language    *string  `name:"language" help:"Language code of the audio (e.g., 'de', 'es', 'fr'), or detected when it isn't given"`
 	Format      string   `name:"format" help:"Output format: json, text, vtt, srt" default:"json"`
 }
 

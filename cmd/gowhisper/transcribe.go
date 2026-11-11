@@ -20,9 +20,8 @@ type TranscribeCommands struct {
 }
 
 type TranscribeCommand struct {
-	TranslateCommand
-	Diarize  *bool   `name:"diarize" help:"Enable speaker diarization"`
-	Language *string `name:"language" help:"Language code (e.g., 'en', 'es', 'fr')"`
+	TranslateCommand       // Includes --language, the language of the audio
+	Diarize          *bool `name:"diarize" help:"Enable speaker diarization"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////
